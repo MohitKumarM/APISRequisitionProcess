@@ -46,7 +46,15 @@ table 50102 E_Invoice_Log
         {
             DataClassification = ToBeClassified;
         }
-        field(11; "IRN Generated"; Boolean)
+        field(11; "IRN Status"; Enum "Irn Status")
+        {
+            DataClassification = ToBeClassified;
+        }
+        field(12; "Irn Cancel Date Time"; DateTime)
+        {
+            DataClassification = ToBeClassified;
+        }
+        field(13; "Error Message"; Text[250])
         {
             DataClassification = ToBeClassified;
         }

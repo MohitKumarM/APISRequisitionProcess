@@ -26,6 +26,20 @@ pageextension 50155 EInvPostedTransferShipment extends "Posted Transfer Shipment
                     ApplicationArea = all;
                     Editable = false;
                 }
+                field("Cancel Reason"; Rec."Cancel Reason")
+                {
+                    ApplicationArea = all;
+                }
+                field("Cancel Remarks"; Rec."Cancel Remarks")
+                {
+                    ApplicationArea = all;
+                }
+                field("Irn Cancel DateTime"; Rec."Irn Cancel DateTime")
+                {
+                    ApplicationArea = all;
+                    Editable = false;
+                }
+
             }
         }
     }
@@ -34,38 +48,62 @@ pageextension 50155 EInvPostedTransferShipment extends "Posted Transfer Shipment
     {
         addafter("Co&mments")
         {
-            action("Create IRN No.")
+            group("E-Invoice")
             {
-                ApplicationArea = All;
+                action("Create IRN No.")
+                {
+                    ApplicationArea = All;
 
-                trigger OnAction()
-                var
-                    EInvoiceGeneration: Codeunit "E-Invoice Generation";
-                begin
-                    Clear(EInvoiceGeneration);
-                    EInvoiceGeneration.GenerateIRN(Rec."No.", 1, true);
-                end;
-            }
-            action("Check Payload")
-            {
-                ApplicationArea = All;
+                    trigger OnAction()
+                    var
+                        EInvoiceGeneration: Codeunit "E-Invoice Generation";
+                    begin
+                        if Confirm('Do you want to create IRN No.?', false) then begin
+                            Clear(EInvoiceGeneration);
+                            EInvoiceGeneration.GenerateIRN(Rec."No.", 3, true);
+                        end
+                    end;
+                }
+                action("Check Payload")
+                {
+                    ApplicationArea = All;
 
-                trigger OnAction()
-                var
-                    EInvoiceGeneration: Codeunit "E-Invoice Generation";
-                begin
-                    Clear(EInvoiceGeneration);
-                    EInvoiceGeneration.GenerateIRN(Rec."No.", 1, false);
-                end;
-            }
-            action("E-Invoice Log")
-            {
-                ApplicationArea = All;
-                RunObject = page "E-Invoice Log";
-                RunPageLink = "Document Type" = filter('Invoice'),
+                    trigger OnAction()
+                    var
+                        EInvoiceGeneration: Codeunit "E-Invoice Generation";
+                    begin
+                        if Confirm('Do you want to create IRN No.?', false) then begin
+                            Clear(EInvoiceGeneration);
+                            EInvoiceGeneration.GenerateIRN(Rec."No.", 3, false);
+                        end
+                    end;
+                }
+                action("E-Invoice Log")
+                {
+                    ApplicationArea = All;
+                    RunObject = page "E-Invoice Log";
+                    RunPageLink = "Document Type" = filter('Invoice'),
                     "No." = field("No.");
 
+                }
+                action("Cancel Irn")
+                {
+                    ApplicationArea = All;
+
+                    trigger OnAction()
+                    var
+                        EInvoiceGeneration: Codeunit "E-Invoice Generation";
+                    begin
+                        if Confirm('Do you want to Cancel Irn No.?', false) then begin
+                            Rec.TestField("IRN Hash");
+                            Rec.TestField("Irn Cancel DateTime", 0DT);
+                            Clear(EInvoiceGeneration);
+                            EInvoiceGeneration.CancelIRN(Rec."No.", 3);
+                        end
+                    end;
+                }
             }
+
         }
     }
 

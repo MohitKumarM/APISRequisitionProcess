@@ -18,13 +18,25 @@ pageextension 50153 EInvPostedSalesInvoice extends "Posted Sales Invoice"
         {
             Enabled = false;
         }
+        addafter("Cancel Reason")
+        {
+            field("Cancel Remarks"; Rec."Cancel Remarks")
+            {
+                ApplicationArea = all;
+            }
+            field("Irn Cancel DateTime"; Rec."Irn Cancel DateTime")
+            {
+                ApplicationArea = all;
+                Editable = false;
+            }
+        }
     }
 
     actions
     {
         addafter("F&unctions")
         {
-            group("IRN Creation")
+            group("E-Invoice")
             {
                 action("Create IRN No.")
                 {
@@ -34,8 +46,13 @@ pageextension 50153 EInvPostedSalesInvoice extends "Posted Sales Invoice"
                     var
                         EInvoiceGeneration: Codeunit "E-Invoice Generation";
                     begin
-                        Clear(EInvoiceGeneration);
-                        EInvoiceGeneration.GenerateIRN(Rec."No.", 1, true);
+                        if Confirm('Do you want to create IRN No.?', false) then begin
+                            if (Rec."GST Customer Type" <> Rec."GST Customer Type"::Unregistered) then begin
+                                Clear(EInvoiceGeneration);
+                                EInvoiceGeneration.GenerateIRN(Rec."No.", 1, true);
+                            end else
+                                Error('IRN is not needed for unregistered customer type')
+                        end;
                     end;
                 }
                 action("Check Payload")
@@ -46,8 +63,13 @@ pageextension 50153 EInvPostedSalesInvoice extends "Posted Sales Invoice"
                     var
                         EInvoiceGeneration: Codeunit "E-Invoice Generation";
                     begin
-                        Clear(EInvoiceGeneration);
-                        EInvoiceGeneration.GenerateIRN(Rec."No.", 1, false);
+                        if Confirm('Do you want to Check IRN Payload?', false) then begin
+                            if (Rec."GST Customer Type" <> Rec."GST Customer Type"::Unregistered) then begin
+                                Clear(EInvoiceGeneration);
+                                EInvoiceGeneration.GenerateIRN(Rec."No.", 1, false);
+                            end else
+                                Error('IRN is not needed for unregistered customer type')
+                        end
                     end;
                 }
                 action("E-Invoice Log")
@@ -58,6 +80,24 @@ pageextension 50153 EInvPostedSalesInvoice extends "Posted Sales Invoice"
                     "No." = field("No.");
 
                 }
+                action("Cancel Irn")
+                {
+                    ApplicationArea = All;
+
+                    trigger OnAction()
+                    var
+                        EInvoiceGeneration: Codeunit "E-Invoice Generation";
+                    begin
+                        if Confirm('Do you want to Cancel Irn No.?', false) then begin
+                            Rec.TestField("IRN Hash");
+                            Rec.TestField("Irn Cancel DateTime", 0DT);
+                            Clear(EInvoiceGeneration);
+                            EInvoiceGeneration.CancelIRN(Rec."No.", 1);
+                        end
+                    end;
+                }
+
+
             }
         }
     }

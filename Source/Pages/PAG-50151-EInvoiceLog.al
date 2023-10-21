@@ -43,9 +43,17 @@ page 50312 "E-Invoice Log"
                 {
                     Editable = false;
                 }
-                field("IRN Generated"; Rec."IRN Generated")
+                field("IRN Generated"; Rec."IRN Status")
                 {
                     Editable = false;
+                }
+                field("Irn Cancel Date Time"; Rec."Irn Cancel Date Time")
+                {
+                    ApplicationArea = all;
+                }
+                field("Error Message"; Rec."Error Message")
+                {
+                    ApplicationArea = all;
                 }
                 /* field("Sent Response"; SendResponse)
                 {

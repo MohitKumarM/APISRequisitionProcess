@@ -50,7 +50,8 @@ codeunit 50150 "E-Invoice Generation"
             DocumentType::Invoice:
                 begin
                     if SalesInvoiceHeader.get(DocumentNo) then begin
-                        SalesInvoiceHeader.TestField("IRN Hash", '');
+                        if SalesInvoiceHeader."IRN Hash" <> '' then
+                            Error('Irn has alreday Generated for this Document No. %1 and Irn No. is %2', SalesInvoiceHeader."No.", SalesInvoiceHeader."IRN Hash");
                         if SalesInvoiceHeader."Currency Factor" <> 0 then
                             Currencyfactor := SalesInvoiceHeader."Currency Factor"
                         else
@@ -61,7 +62,8 @@ codeunit 50150 "E-Invoice Generation"
             DocumentType::"Credit Memo":
                 begin
                     if SalesCrMemoHeader.get(DocumentNo) then begin
-                        SalesCrMemoHeader.TestField("IRN Hash", '');
+                        if SalesCrMemoHeader."IRN Hash" <> '' then
+                            Error('Irn has alreday Generated for this Document No. %1 and Irn No. is %2', SalesCrMemoHeader."No.", SalesCrMemoHeader."IRN Hash");
                         if SalesCrMemoHeader."Currency Factor" <> 0 then
                             Currencyfactor := SalesCrMemoHeader."Currency Factor"
                         else
@@ -72,7 +74,8 @@ codeunit 50150 "E-Invoice Generation"
             DocumentType::"Transfer Shipment":
                 begin
                     if TransferShipmentHeader.get(DocumentNo) then begin
-                        TransferShipmentHeader.TestField("IRN Hash", '');
+                        if TransferShipmentHeader."IRN Hash" <> '' then
+                            Error('Irn has alreday Generated for this Document No. %1 and Irn No. is %2', TransferShipmentHeader."No.", TransferShipmentHeader."IRN Hash");
                         if Location.get(TransferShipmentHeader."Transfer-from Code") then
                             GSTIN := Location."GST Registration No.";
                     end;
@@ -1027,6 +1030,7 @@ codeunit 50150 "E-Invoice Generation"
         OutputMessage: Text;
         ResultMessage: Text;
         IRNNo: Text;
+        ErrorMessage: Text;
         QRText: Text;
         QRGenerator: Codeunit "QR Generator";
         TempBlob: Codeunit "Temp Blob";
@@ -1049,6 +1053,11 @@ codeunit 50150 "E-Invoice Generation"
         LineNo: Integer;
     begin
         IRNGenerated := false;
+        IRNNo := '';
+        AckDate := 0DT;
+        AckNo := '';
+        QRText := '';
+        ErrorMessage := '';
         if GSTRegistrationNo.get(GSTIN) then;
         EinvoiceHttpContent.WriteFrom(Format(JsonPayload));
         EinvoiceHttpContent.GetHeaders(EinvoiceHttpHeader);
@@ -1070,8 +1079,11 @@ codeunit 50150 "E-Invoice Generation"
                     if JResultObject.Get('Message', JResultToken) then;
                     //Message(Format(JResultToken));
                 end else
-                    if JResultObject.Get('Message', JResultToken) then
-                        Message(Format(JResultToken));
+                    if JResultObject.Get('Message', JResultToken) then begin
+                        ErrorMessage := JResultToken.AsValue().AsText();
+                        Message(Format(ErrorMessage));
+                    end;
+
 
             if JResultObject.Get('Data', JResultToken) then
                 if JResultToken.IsObject then begin
@@ -1122,7 +1134,11 @@ codeunit 50150 "E-Invoice Generation"
                                 LineNo := 10000;
                             EInvoiceLog."Line No" := LineNo;
                             EInvoiceLog."IRN Hash" := IRNNo;
-                            EInvoiceLog."IRN Generated" := IRNGenerated;
+                            if IRNGenerated then
+                                EInvoiceLog."IRN Status" := EInvoiceLog."IRN Status"::Submitted
+                            else
+                                EInvoiceLog."IRN Status" := EInvoiceLog."IRN Status"::Failed;
+                            EInvoiceLog."Error Message" := ErrorMessage;
                             EInvoiceLog."Current Date Time" := AckDate;
                             EInvoiceLog."Acknowledge No." := AckNo;
                             CLEAR(RequestResponse);
@@ -1176,8 +1192,12 @@ codeunit 50150 "E-Invoice Generation"
                                 LineNo := 10000;
                             EInvoiceLog."Line No" := LineNo;
                             EInvoiceLog."IRN Hash" := IRNNo;
-                            EInvoiceLog."IRN Generated" := IRNGenerated;
+                            if IRNGenerated then
+                                EInvoiceLog."IRN Status" := EInvoiceLog."IRN Status"::Submitted
+                            else
+                                EInvoiceLog."IRN Status" := EInvoiceLog."IRN Status"::Failed;
                             EInvoiceLog."Current Date Time" := AckDate;
+                            EInvoiceLog."Error Message" := ErrorMessage;
                             EInvoiceLog."Acknowledge No." := AckNo;
                             CLEAR(RequestResponse);
                             RequestResponse.ADDTEXT(JsonPayload);
@@ -1230,8 +1250,12 @@ codeunit 50150 "E-Invoice Generation"
                                 LineNo := 10000;
                             EInvoiceLog."Line No" := LineNo;
                             EInvoiceLog."IRN Hash" := IRNNo;
-                            EInvoiceLog."IRN Generated" := IRNGenerated;
+                            if IRNGenerated then
+                                EInvoiceLog."IRN Status" := EInvoiceLog."IRN Status"::Submitted
+                            else
+                                EInvoiceLog."IRN Status" := EInvoiceLog."IRN Status"::Failed;
                             EInvoiceLog."Current Date Time" := AckDate;
+                            EInvoiceLog."Error Message" := ErrorMessage;
                             EInvoiceLog."Acknowledge No." := AckNo;
                             CLEAR(RequestResponse);
                             RequestResponse.ADDTEXT(JsonPayload);
@@ -1257,6 +1281,287 @@ codeunit 50150 "E-Invoice Generation"
             end;
         end else
             Message(Team001);
+    end;
+
+    procedure CancelIRN(DocNo: Code[20]; DocumentType: Option " ",Invoice,"Credit Memo","Transfer Shipment")
+    var
+        EinvoiceHttpContent: HttpContent;
+        EinvoiceHttpHeader: HttpHeaders;
+        EinvoiceHttpRequest: HttpRequestMessage;
+        EinvoiceHttpClient: HttpClient;
+        EinvoiceHttpResponse: HttpResponseMessage;
+        JOutputObject: JsonObject;
+        JOutputToken: JsonToken;
+        JResultToken: JsonToken;
+        JResultObject: JsonObject;
+        OutputMessage: Text;
+        ResultMessage: Text;
+        IRNNo: Text;
+        EInvoiceSetUp: Record "E-Invoice Set Up";
+        Location: Record Location;
+        GSTRegistrationNos: Record "GST Registration Nos.";
+        CancelDateText: Text;
+        YearCode: Integer;
+        MonthCode: Integer;
+        DayCode: Integer;
+        CancelDateTime: DateTime;
+        CnCl_SalesInvoiceHeader: Record "Sales Invoice Header";
+        CnCl_SalesCrMemoHeader: Record "Sales Cr.Memo Header";
+        CnCl_TransferShipmentHeader: Record "Transfer Shipment Header";
+        E_InvoiceLog: Record E_Invoice_Log;
+        ErrorMessage: Text;
+        IrnCancel: Boolean;
+    begin
+        IrnCancel := false;
+        ErrorMessage := '';
+        IRNNo := '';
+        CancelDateTime := 0DT;
+        case DocumentType of
+            DocumentType::Invoice:
+                begin
+                    if CnCl_SalesInvoiceHeader.get(DocNo) then
+                        if GSTRegistrationNos.Get(CnCl_SalesInvoiceHeader."Location GST Reg. No.") then;
+                end;
+            DocumentType::"Credit Memo":
+                begin
+                    if CnCl_SalesCrMemoHeader.get(DocNo) then
+                        if GSTRegistrationNos.Get(CnCl_SalesCrMemoHeader."Location GST Reg. No.") then;
+                end;
+            DocumentType::"Transfer Shipment":
+                begin
+                    if CnCl_TransferShipmentHeader.get(DocNo) then
+                        if Location.get(CnCl_TransferShipmentHeader."Transfer-from Code") then
+                            if GSTRegistrationNos.Get(Location."GST Registration No.") then;
+                end;
+        end;
+        AuthenticateToken(GSTRegistrationNos.Code);
+        EInvoiceSetUp.Get();
+        EinvoiceHttpContent.WriteFrom(CancelIRNBody(DocNo, DocumentType));
+        EinvoiceHttpContent.GetHeaders(EinvoiceHttpHeader);
+        EinvoiceHttpHeader.Clear();
+        EinvoiceHttpHeader.Add('client_id', EInvoiceSetUp."Client ID");
+        EinvoiceHttpHeader.Add('client_secret', EInvoiceSetUp."Client Secret");
+        EinvoiceHttpHeader.Add('IPAddress', EInvoiceSetUp."IP Address");
+        EinvoiceHttpHeader.Add('Content-Type', 'application/json');
+        EinvoiceHttpHeader.Add('user_name', GSTRegistrationNos."User Name");
+        EinvoiceHttpHeader.Add('Gstin', GSTRegistrationNos.Code);
+        EinvoiceHttpRequest.Content := EinvoiceHttpContent;
+        EinvoiceHttpRequest.SetRequestUri(EInvoiceSetUp."E-Invoice URl");
+        EinvoiceHttpRequest.Method := 'POST';
+        if EinvoiceHttpClient.Send(EinvoiceHttpRequest, EinvoiceHttpResponse) then begin
+            EinvoiceHttpResponse.Content.ReadAs(ResultMessage);
+            JResultObject.ReadFrom(ResultMessage);
+            if JResultObject.Get('MessageId', JResultToken) then
+                if JResultToken.AsValue().AsInteger() = 1 then begin
+                    if JResultObject.Get('Message', JResultToken) then;
+                    //Message(Format(JResultToken));
+                end else
+                    if JResultObject.Get('Message', JResultToken) then begin
+                        ErrorMessage := JResultToken.AsValue().AsText();
+                        Message(Format(ErrorMessage));
+                    end;
+
+
+            if JResultObject.Get('Data', JResultToken) then
+                if JResultToken.IsObject then begin
+                    JResultToken.WriteTo(OutputMessage);
+                    JOutputObject.ReadFrom(OutputMessage);
+                    if JOutputObject.Get('CancelDate', JOutputToken) then
+                        CancelDateText := JOutputToken.AsValue().AsText();
+                    Evaluate(YearCode, CopyStr(CancelDateText, 1, 4));
+                    Evaluate(MonthCode, CopyStr(CancelDateText, 6, 2));
+                    Evaluate(DayCode, CopyStr(CancelDateText, 9, 2));
+                    Evaluate(CancelDateTime, Format(DMY2Date(DayCode, MonthCode, YearCode)) + ' ' + Copystr(CancelDateText, 12, 8));
+                    IrnCancel := true;
+                    if JOutputObject.Get('Irn', JOutputToken) then
+                        IRNNo := JOutputToken.AsValue().AsText();
+                    Message('E-Invoice Cancelled Successfully!!');
+                end;
+            case
+                DocumentType of
+                DocumentType::Invoice:
+                    begin
+                        E_InvoiceLog.Reset();
+                        E_InvoiceLog.SetRange("Document Type", E_InvoiceLog."Document Type"::Invoice);
+                        E_InvoiceLog.SetRange("No.", DocNo);
+                        E_InvoiceLog.SetRange("IRN Status", E_InvoiceLog."IRN Status"::Submitted);
+                        if E_InvoiceLog.FindFirst() then begin
+                            if IrnCancel then
+                                E_InvoiceLog."IRN Status" := E_InvoiceLog."IRN Status"::Cancelled
+                            else
+                                E_InvoiceLog."IRN Status" := E_InvoiceLog."IRN Status"::"Cancel Failed";
+                            E_InvoiceLog."IRN Hash" := IRNNo;
+                            E_InvoiceLog."Irn Cancel Date Time" := CancelDateTime;
+                            E_InvoiceLog."Error Message" := ErrorMessage;
+                            E_InvoiceLog.Modify();
+                        end;
+                        if CnCl_SalesInvoiceHeader.get(DocNo) then begin
+                            CnCl_SalesInvoiceHeader."IRN Hash" := IRNNo;
+                            CnCl_SalesInvoiceHeader."Irn Cancel DateTime" := CancelDateTime;
+                            CnCl_SalesInvoiceHeader.Modify();
+                        end;
+                    end;
+                DocumentType::"Credit Memo":
+                    begin
+                        E_InvoiceLog.Reset();
+                        E_InvoiceLog.SetRange("Document Type", E_InvoiceLog."Document Type"::"Credit Memo");
+                        E_InvoiceLog.SetRange("No.", DocNo);
+                        E_InvoiceLog.SetRange("IRN Status", E_InvoiceLog."IRN Status"::Submitted);
+                        if E_InvoiceLog.FindFirst() then begin
+                            if IrnCancel then
+                                E_InvoiceLog."IRN Status" := E_InvoiceLog."IRN Status"::Cancelled
+                            else
+                                E_InvoiceLog."IRN Status" := E_InvoiceLog."IRN Status"::"Cancel Failed";
+                            E_InvoiceLog."IRN Hash" := IRNNo;
+                            E_InvoiceLog."Irn Cancel Date Time" := CancelDateTime;
+                            E_InvoiceLog."Error Message" := ErrorMessage;
+                            E_InvoiceLog.Modify();
+                        end;
+                        if CnCl_SalesCrMemoHeader.get(DocNo) then begin
+                            CnCl_SalesCrMemoHeader."IRN Hash" := IRNNo;
+                            CnCl_SalesCrMemoHeader."Irn Cancel DateTime" := CancelDateTime;
+                            CnCl_SalesCrMemoHeader.Modify();
+                        end;
+                    end;
+                DocumentType::"Transfer Shipment":
+                    begin
+                        E_InvoiceLog.Reset();
+                        E_InvoiceLog.SetRange("Document Type", E_InvoiceLog."Document Type"::Invoice);
+                        E_InvoiceLog.SetRange("No.", DocNo);
+                        E_InvoiceLog.SetRange("IRN Status", E_InvoiceLog."IRN Status"::Submitted);
+                        if E_InvoiceLog.FindFirst() then begin
+                            if IrnCancel then
+                                E_InvoiceLog."IRN Status" := E_InvoiceLog."IRN Status"::Cancelled
+                            else
+                                E_InvoiceLog."IRN Status" := E_InvoiceLog."IRN Status"::"Cancel Failed";
+                            E_InvoiceLog."IRN Hash" := IRNNo;
+                            E_InvoiceLog."Irn Cancel Date Time" := CancelDateTime;
+                            E_InvoiceLog."Error Message" := ErrorMessage;
+                            E_InvoiceLog.Modify();
+                        end;
+                        if CnCl_TransferShipmentHeader.get(DocNo) then begin
+                            CnCl_TransferShipmentHeader."IRN Hash" := IRNNo;
+                            CnCl_TransferShipmentHeader."Irn Cancel DateTime" := CancelDateTime;
+                            CnCl_TransferShipmentHeader.Modify();
+                        end;
+                    end;
+            end;
+        end else
+            Message(Team001);
+    end;
+
+    local procedure CancelIRNBody(DocNo: Code[20]; DocumentType: Option " ",Invoice,"Credit Memo","Transfer Shipment") CnclBody: Text;
+    var
+        Cncl_IRNPayload: JsonObject;
+        Cncl_SalesInvoiceHeader: Record "Sales Invoice Header";
+        Cncl_SalesCrMemoHeader: Record "Sales Cr.Memo Header";
+        Cncl_TransferShipment: Record "Transfer Shipment Header";
+    begin
+        case
+            DocumentType of
+            DocumentType::Invoice:
+                begin
+                    if Cncl_SalesInvoiceHeader.get(DocNo) then begin
+                        Cncl_SalesInvoiceHeader.TestField("IRN Hash");
+                        Cncl_SalesInvoiceHeader.TestField("Cancel Remarks");
+                        Cncl_SalesInvoiceHeader.TestField("Cancel Reason");
+                        Cncl_IRNPayload.Add('action', 'CANCEL');
+                        Cncl_IRNPayload.Add('IRNNo', Cncl_SalesInvoiceHeader."IRN Hash");
+                        Cncl_IRNPayload.Add('CancelReason', (GetCancelReasonSaleInvHeader(Cncl_SalesInvoiceHeader)));
+                        Cncl_IRNPayload.Add('CancelRemarks', Format(Cncl_SalesInvoiceHeader."Cancel Remarks"));
+                        Cncl_IRNPayload.WriteTo(CnclBody);
+                        exit(CnclBody);
+                    end;
+                end;
+            DocumentType::"Credit Memo":
+                begin
+                    if Cncl_SalesCrMemoHeader.get(DocNo) then begin
+                        Cncl_SalesCrMemoHeader.TestField("IRN Hash");
+                        Cncl_SalesCrMemoHeader.TestField("Cancel Remarks");
+                        Cncl_SalesCrMemoHeader.TestField("Cancel Reason");
+                        Cncl_IRNPayload.Add('action', 'CANCEL');
+                        Cncl_IRNPayload.Add('IRNNo', Cncl_SalesCrMemoHeader."IRN Hash");
+                        Cncl_IRNPayload.Add('CancelReason', (GetCancelReasonSalesCrMemoHeader(Cncl_SalesCrMemoHeader)));
+                        Cncl_IRNPayload.Add('CancelRemarks', Format(Cncl_SalesCrMemoHeader."Cancel Remarks"));
+                        Cncl_IRNPayload.WriteTo(CnclBody);
+                        exit(CnclBody);
+                    end;
+                end;
+            DocumentType::"Transfer Shipment":
+                begin
+                    if Cncl_TransferShipment.get(DocNo) then begin
+                        Cncl_TransferShipment.TestField("IRN Hash");
+                        Cncl_TransferShipment.TestField("Cancel Remarks");
+                        Cncl_TransferShipment.TestField("Cancel Reason");
+                        Cncl_IRNPayload.Add('action', 'CANCEL');
+                        Cncl_IRNPayload.Add('IRNNo', Cncl_TransferShipment."IRN Hash");
+                        Cncl_IRNPayload.Add('CancelReason', (GetCancelReasonTrnsShpemntHeader(Cncl_TransferShipment)));
+                        Cncl_IRNPayload.Add('CancelRemarks', Format(Cncl_TransferShipment."Cancel Remarks"));
+                        Cncl_IRNPayload.WriteTo(CnclBody);
+                        exit(CnclBody);
+                    end;
+                end;
+        end;
+    end;
+
+    local procedure GetCancelReasonSalesCrMemoHeader(RecSalesCrMemoHeader: Record "Sales Cr.Memo Header"): Integer
+    var
+        SalesCrMemoHeader: Record "Sales Cr.Memo Header";
+    begin
+        SalesCrMemoHeader.Reset();
+        SalesCrMemoHeader.SetRange("No.", RecSalesCrMemoHeader."No.");
+        if SalesCrMemoHeader.FindFirst() then begin
+            if SalesCrMemoHeader."Cancel Reason" = SalesCrMemoHeader."Cancel Reason"::" " then
+                exit(0);
+            if SalesCrMemoHeader."Cancel Reason" = SalesCrMemoHeader."Cancel Reason"::"Data Entry Mistake" then
+                exit(1);
+            if SalesCrMemoHeader."Cancel Reason" = SalesCrMemoHeader."Cancel Reason"::Duplicate then
+                exit(2);
+            if SalesCrMemoHeader."Cancel Reason" = SalesCrMemoHeader."Cancel Reason"::"Order Canceled" then
+                exit(3);
+            if SalesCrMemoHeader."Cancel Reason" = SalesCrMemoHeader."Cancel Reason"::Other then
+                exit(4);
+        end;
+    end;
+
+    local procedure GetCancelReasonTrnsShpemntHeader(RecTransferShipmentHeader: Record "Transfer Shipment Header"): Integer
+    var
+        TrnsfrShipmentHeader: Record "Transfer Shipment Header";
+    begin
+        TrnsfrShipmentHeader.Reset();
+        TrnsfrShipmentHeader.SetRange("No.", RecTransferShipmentHeader."No.");
+        if TrnsfrShipmentHeader.FindFirst() then begin
+            if TrnsfrShipmentHeader."Cancel Reason" = TrnsfrShipmentHeader."Cancel Reason"::" " then
+                exit(0);
+            if TrnsfrShipmentHeader."Cancel Reason" = TrnsfrShipmentHeader."Cancel Reason"::"Data Entry Mistake" then
+                exit(1);
+            if TrnsfrShipmentHeader."Cancel Reason" = TrnsfrShipmentHeader."Cancel Reason"::Duplicate then
+                exit(2);
+            if TrnsfrShipmentHeader."Cancel Reason" = TrnsfrShipmentHeader."Cancel Reason"::"Order Canceled" then
+                exit(3);
+            if TrnsfrShipmentHeader."Cancel Reason" = TrnsfrShipmentHeader."Cancel Reason"::Other then
+                exit(4);
+        end;
+    end;
+
+    local procedure GetCancelReasonSaleInvHeader(RecSalesInvHeader: Record "Sales Invoice Header"): Integer
+    var
+        SalesInvHeader: Record "Sales Invoice Header";
+    begin
+        SalesInvHeader.Reset();
+        SalesInvHeader.SetRange("No.", RecSalesInvHeader."No.");
+        if SalesInvHeader.FindFirst() then begin
+            if SalesInvHeader."Cancel Reason" = SalesInvHeader."Cancel Reason"::" " then
+                exit(0);
+            if SalesInvHeader."Cancel Reason" = SalesInvHeader."Cancel Reason"::"Data Entry Mistake" then
+                exit(1);
+            if SalesInvHeader."Cancel Reason" = SalesInvHeader."Cancel Reason"::Duplicate then
+                exit(2);
+            if SalesInvHeader."Cancel Reason" = SalesInvHeader."Cancel Reason"::"Order Canceled" then
+                exit(3);
+            if SalesInvHeader."Cancel Reason" = SalesInvHeader."Cancel Reason"::Other then
+                exit(4);
+        end;
     end;
 
     local procedure DelString(StringToChange: Text): Text

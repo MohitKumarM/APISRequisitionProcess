@@ -19,6 +19,18 @@ tableextension 50154 EInvTransferShipmentHeader extends "Transfer Shipment Heade
         {
             DataClassification = ToBeClassified;
         }
+        field(50154; "Cancel Remarks"; Enum "Cancel Remarks")
+        {
+            DataClassification = ToBeClassified;
+        }
+        field(50155; "Cancel Reason"; Enum "e-Invoice Cancel Reason")
+        {
+            DataClassification = ToBeClassified;
+        }
+        field(50156; "Irn Cancel DateTime"; DateTime)
+        {
+            DataClassification = ToBeClassified;
+        }
     }
 
     var
