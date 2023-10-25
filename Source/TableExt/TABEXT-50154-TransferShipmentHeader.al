@@ -31,6 +31,15 @@ tableextension 50154 EInvTransferShipmentHeader extends "Transfer Shipment Heade
         {
             DataClassification = ToBeClassified;
         }
+        field(50157; "E-Way Bill Date Time"; DateTime)
+        {
+            DataClassification = ToBeClassified;
+        }
+        field(50158; "E-Way Bill No."; Text[50])
+        {
+            Caption = 'E-Way Bill No.';
+            DataClassification = CustomerContent;
+        }
     }
 
     var

@@ -1,6 +1,7 @@
 table 50102 E_Invoice_Log
 {
     DataClassification = ToBeClassified;
+    LookupPageId = "E-Invoice Log";
 
     fields
     {
@@ -13,11 +14,11 @@ table 50102 E_Invoice_Log
             DataClassification = ToBeClassified;
             OptionMembers = Invoice,"Credit Memo";
         }
-        field(3; "Sent Response"; Blob)
+        field(3; "G_IRN Sent Request"; Blob)
         {
             DataClassification = ToBeClassified;
         }
-        field(4; "Output Response"; Blob)
+        field(4; "G_IRN Output Response"; Blob)
         {
             DataClassification = ToBeClassified;
         }
@@ -58,6 +59,39 @@ table 50102 E_Invoice_Log
         {
             DataClassification = ToBeClassified;
         }
+        field(14; "C_IRN Sent Request"; Blob)
+        {
+            DataClassification = ToBeClassified;
+            Subtype = Bitmap;
+        }
+        field(15; "C_IRN Output Response"; Blob)
+        {
+            DataClassification = ToBeClassified;
+            Subtype = Bitmap;
+        }
+        field(16; "E-Way Bill No"; Text[50])
+        {
+            DataClassification = ToBeClassified;
+        }
+        field(17; "E-Way Bill Date Time"; DateTime)
+        {
+            DataClassification = ToBeClassified;
+        }
+        field(18; "G_E-Way bill Sent Request"; Blob)
+        {
+            DataClassification = ToBeClassified;
+            Subtype = Bitmap;
+        }
+        field(19; "G_E-Way bill Output Response"; Blob)
+        {
+            DataClassification = ToBeClassified;
+            Subtype = Bitmap;
+        }
+        field(20; "E-Way Bill Status"; Enum "E-Way Bill Status")
+        {
+            DataClassification = ToBeClassified;
+        }
+
     }
 
     keys
@@ -75,13 +109,13 @@ table 50102 E_Invoice_Log
         ContentLine: Text;
         Content: Text;
     begin
-        CALCFIELDS("Sent Response");
-        IF NOT "Sent Response".HASVALUE THEN
+        CALCFIELDS("G_IRN Sent Request");
+        IF NOT "G_IRN Sent Request".HASVALUE THEN
             EXIT('');
         CR[1] := 10;
         Clear(Content);
         Clear(instr);
-        "Sent Response".CreateInStream(instr, TextEncoding::Windows);
+        "G_IRN Sent Request".CreateInStream(instr, TextEncoding::Windows);
         instr.READTEXT(Content);
         WHILE NOT instr.EOS DO BEGIN
             instr.READTEXT(ContentLine);
@@ -99,13 +133,13 @@ table 50102 E_Invoice_Log
         ContentLine: Text;
         Content: Text;
     begin
-        CALCFIELDS("Output Response");
-        IF NOT "Output Response".HASVALUE THEN
+        CALCFIELDS("G_IRN Output Response");
+        IF NOT "G_IRN Output Response".HASVALUE THEN
             EXIT('');
         CR[1] := 10;
         Clear(Content);
         Clear(instr);
-        "Output Response".CreateInStream(instr, TextEncoding::Windows);
+        "G_IRN Output Response".CreateInStream(instr, TextEncoding::Windows);
         instr.READTEXT(Content);
         WHILE NOT instr.EOS DO BEGIN
             instr.READTEXT(ContentLine);
@@ -114,13 +148,13 @@ table 50102 E_Invoice_Log
         exit(Content);
     end;
 
-    procedure SentResponseReadAsText(LineSeparator: Text; Encoding: TextEncoding) Content: Text
+    procedure GenerateIRNSentResponseReadAsText(LineSeparator: Text; Encoding: TextEncoding) Content: Text
     var
         InStream: InStream;
         ContentLine: Text;
     begin
-        CALCFIELDS("Sent Response");
-        "Sent Response".CREATEINSTREAM(InStream, Encoding);
+        CALCFIELDS("G_IRN Sent Request");
+        "G_IRN Sent Request".CREATEINSTREAM(InStream, Encoding);
 
         InStream.READTEXT(Content);
         WHILE NOT InStream.EOS DO BEGIN
@@ -129,13 +163,73 @@ table 50102 E_Invoice_Log
         END;
     end;
 
-    procedure OutPutResponseReadAsText(LineSeparator: Text; Encoding: TextEncoding) Content: Text
+    procedure GenerateIRNOutPutResponseReadAsText(LineSeparator: Text; Encoding: TextEncoding) Content: Text
     var
         InStream: InStream;
         ContentLine: Text;
     begin
-        CALCFIELDS("Output Response");
-        "Output Response".CREATEINSTREAM(InStream, Encoding);
+        CALCFIELDS("G_IRN Output Response");
+        "G_IRN Output Response".CREATEINSTREAM(InStream, Encoding);
+
+        InStream.READTEXT(Content);
+        WHILE NOT InStream.EOS DO BEGIN
+            InStream.READTEXT(ContentLine);
+            Content += LineSeparator + ContentLine;
+        END;
+    end;
+
+    procedure CancelIRNSentResponseReadAsText(LineSeparator: Text; Encoding: TextEncoding) Content: Text
+    var
+        InStream: InStream;
+        ContentLine: Text;
+    begin
+        CALCFIELDS("C_IRN Sent Request");
+        "C_IRN Sent Request".CREATEINSTREAM(InStream, Encoding);
+
+        InStream.READTEXT(Content);
+        WHILE NOT InStream.EOS DO BEGIN
+            InStream.READTEXT(ContentLine);
+            Content += LineSeparator + ContentLine;
+        END;
+    end;
+
+    procedure CancelIRNOutPutResponseReadAsText(LineSeparator: Text; Encoding: TextEncoding) Content: Text
+    var
+        InStream: InStream;
+        ContentLine: Text;
+    begin
+        CALCFIELDS("C_IRN Output Response");
+        "C_IRN Output Response".CREATEINSTREAM(InStream, Encoding);
+
+        InStream.READTEXT(Content);
+        WHILE NOT InStream.EOS DO BEGIN
+            InStream.READTEXT(ContentLine);
+            Content += LineSeparator + ContentLine;
+        END;
+    end;
+
+    procedure GenerateEWayBillSentResponseReadAsText(LineSeparator: Text; Encoding: TextEncoding) Content: Text
+    var
+        InStream: InStream;
+        ContentLine: Text;
+    begin
+        CALCFIELDS("G_E-Way bill Sent Request");
+        "G_E-Way bill Sent Request".CREATEINSTREAM(InStream, Encoding);
+
+        InStream.READTEXT(Content);
+        WHILE NOT InStream.EOS DO BEGIN
+            InStream.READTEXT(ContentLine);
+            Content += LineSeparator + ContentLine;
+        END;
+    end;
+
+    procedure GenerateEWayBillOutPutResponseReadAsText(LineSeparator: Text; Encoding: TextEncoding) Content: Text
+    var
+        InStream: InStream;
+        ContentLine: Text;
+    begin
+        CALCFIELDS("G_E-Way bill Output Response");
+        "G_E-Way bill Output Response".CREATEINSTREAM(InStream, Encoding);
 
         InStream.READTEXT(Content);
         WHILE NOT InStream.EOS DO BEGIN

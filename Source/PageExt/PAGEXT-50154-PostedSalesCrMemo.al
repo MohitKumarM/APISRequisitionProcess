@@ -39,6 +39,11 @@ pageextension 50154 EInvPostedSalesCrMemo extends "Posted Sales Credit Memo"
                 ApplicationArea = all;
                 Editable = true;
             }
+            field("E-Way Bill Date Time"; Rec."E-Way Bill Date Time")
+            {
+                ApplicationArea = all;
+                Editable = false;
+            }
         }
     }
 
@@ -106,6 +111,27 @@ pageextension 50154 EInvPostedSalesCrMemo extends "Posted Sales Credit Memo"
                         end
                     end;
                 }
+            }
+            group("E-Way Bill")
+            {
+                action("Generate E-Way Bill")
+                {
+                    ApplicationArea = All;
+
+                    trigger OnAction()
+                    var
+                        EWaybillGeneration: Codeunit "E-Way Bill Generartion";
+                    begin
+                        if Confirm('Do you want to Generate E-Way Bill No.?', false) then begin
+                            Rec.TestField("IRN Hash");
+                            Rec.TestField("Irn Cancel DateTime", 0DT);
+                            Rec.TestField("E-Way Bill No.", '');
+                            Clear(EWaybillGeneration);
+                            EWaybillGeneration.GenerateEWayBillFromIRN(Rec."No.", 2);
+                        end
+                    end;
+                }
+
             }
         }
     }

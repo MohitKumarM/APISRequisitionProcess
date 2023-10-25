@@ -1038,7 +1038,7 @@ codeunit 50150 "E-Invoice Generation"
         FldRef: FieldRef;
         AckNo: Code[20];
         AckDate: DateTime;
-        OutStream: OutStream;
+        OutStrm: OutStream;
         YearCode: Integer;
         MonthCode: Integer;
         DayCode: Integer;
@@ -1143,13 +1143,13 @@ codeunit 50150 "E-Invoice Generation"
                             EInvoiceLog."Acknowledge No." := AckNo;
                             CLEAR(RequestResponse);
                             RequestResponse.ADDTEXT(JsonPayload);
-                            EInvoiceLog."Sent Response".CREATEOUTSTREAM(OutStream);
-                            RequestResponse.WRITE(OutStream);
+                            EInvoiceLog."G_IRN Sent Request".CREATEOUTSTREAM(OutStrm);
+                            RequestResponse.WRITE(OutStrm);
                             CLEAR(RequestResponse);
-                            Clear(OutStream);
+                            Clear(OutStrm);
                             RequestResponse.ADDTEXT(ResultMessage);
-                            EInvoiceLog."Output Response".CREATEOUTSTREAM(OutStream);
-                            RequestResponse.WRITE(OutStream);
+                            EInvoiceLog."G_IRN Output Response".CREATEOUTSTREAM(OutStrm);
+                            RequestResponse.WRITE(OutStrm);
                             EInvoiceLog.Insert();
                             Clear(RecRef);
                             RecRef.Get(EInvoiceLog.RecordId);
@@ -1201,13 +1201,13 @@ codeunit 50150 "E-Invoice Generation"
                             EInvoiceLog."Acknowledge No." := AckNo;
                             CLEAR(RequestResponse);
                             RequestResponse.ADDTEXT(JsonPayload);
-                            EInvoiceLog."Sent Response".CREATEOUTSTREAM(OutStream);
-                            RequestResponse.WRITE(OutStream);
+                            EInvoiceLog."G_IRN Sent Request".CREATEOUTSTREAM(OutStrm);
+                            RequestResponse.WRITE(OutStrm);
                             CLEAR(RequestResponse);
-                            Clear(OutStream);
+                            Clear(OutStrm);
                             RequestResponse.ADDTEXT(ResultMessage);
-                            EInvoiceLog."Output Response".CREATEOUTSTREAM(OutStream);
-                            RequestResponse.WRITE(OutStream);
+                            EInvoiceLog."G_IRN Output Response".CREATEOUTSTREAM(OutStrm);
+                            RequestResponse.WRITE(OutStrm);
                             EInvoiceLog.Insert();
                             Clear(RecRef);
                             RecRef.Get(EInvoiceLog.RecordId);
@@ -1259,13 +1259,13 @@ codeunit 50150 "E-Invoice Generation"
                             EInvoiceLog."Acknowledge No." := AckNo;
                             CLEAR(RequestResponse);
                             RequestResponse.ADDTEXT(JsonPayload);
-                            EInvoiceLog."Sent Response".CREATEOUTSTREAM(OutStream);
-                            RequestResponse.WRITE(OutStream);
+                            EInvoiceLog."G_IRN Sent Request".CREATEOUTSTREAM(OutStrm);
+                            RequestResponse.WRITE(OutStrm);
                             CLEAR(RequestResponse);
-                            Clear(OutStream);
+                            Clear(OutStrm);
                             RequestResponse.ADDTEXT(ResultMessage);
-                            EInvoiceLog."Output Response".CREATEOUTSTREAM(OutStream);
-                            RequestResponse.WRITE(OutStream);
+                            EInvoiceLog."G_IRN Output Response".CREATEOUTSTREAM(OutStrm);
+                            RequestResponse.WRITE(OutStrm);
                             EInvoiceLog.Insert();
                             Clear(RecRef);
                             RecRef.Get(EInvoiceLog.RecordId);
@@ -1294,8 +1294,10 @@ codeunit 50150 "E-Invoice Generation"
         JOutputToken: JsonToken;
         JResultToken: JsonToken;
         JResultObject: JsonObject;
+        RequestResponse: BigText;
         OutputMessage: Text;
         ResultMessage: Text;
+        OutStrm: OutStream;
         IRNNo: Text;
         EInvoiceSetUp: Record "E-Invoice Set Up";
         Location: Record Location;
@@ -1390,6 +1392,15 @@ codeunit 50150 "E-Invoice Generation"
                                 E_InvoiceLog."IRN Status" := E_InvoiceLog."IRN Status"::Cancelled
                             else
                                 E_InvoiceLog."IRN Status" := E_InvoiceLog."IRN Status"::"Cancel Failed";
+                            CLEAR(RequestResponse);
+                            RequestResponse.ADDTEXT(CancelIRNBody(DocNo, DocumentType));
+                            E_InvoiceLog."C_IRN Sent Request".CREATEOUTSTREAM(OutStrm);
+                            RequestResponse.WRITE(OutStrm);
+
+                            CLEAR(RequestResponse);
+                            RequestResponse.ADDTEXT(ResultMessage);
+                            E_InvoiceLog."C_IRN Output Response".CREATEOUTSTREAM(OutStrm);
+                            RequestResponse.WRITE(OutStrm);
                             E_InvoiceLog."IRN Hash" := IRNNo;
                             E_InvoiceLog."Irn Cancel Date Time" := CancelDateTime;
                             E_InvoiceLog."Error Message" := ErrorMessage;
@@ -1414,6 +1425,14 @@ codeunit 50150 "E-Invoice Generation"
                                 E_InvoiceLog."IRN Status" := E_InvoiceLog."IRN Status"::"Cancel Failed";
                             E_InvoiceLog."IRN Hash" := IRNNo;
                             E_InvoiceLog."Irn Cancel Date Time" := CancelDateTime;
+                            CLEAR(RequestResponse);
+                            RequestResponse.ADDTEXT(CancelIRNBody(DocNo, DocumentType));
+                            E_InvoiceLog."C_IRN Sent Request".CREATEOUTSTREAM(OutStrm);
+                            RequestResponse.WRITE(OutStrm);
+
+                            CLEAR(RequestResponse);
+                            RequestResponse.ADDTEXT(ResultMessage);
+                            E_InvoiceLog."C_IRN Output Response".CREATEOUTSTREAM(OutStrm);
                             E_InvoiceLog."Error Message" := ErrorMessage;
                             E_InvoiceLog.Modify();
                         end;
@@ -1435,6 +1454,14 @@ codeunit 50150 "E-Invoice Generation"
                             else
                                 E_InvoiceLog."IRN Status" := E_InvoiceLog."IRN Status"::"Cancel Failed";
                             E_InvoiceLog."IRN Hash" := IRNNo;
+                            CLEAR(RequestResponse);
+                            RequestResponse.ADDTEXT(CancelIRNBody(DocNo, DocumentType));
+                            E_InvoiceLog."C_IRN Sent Request".CREATEOUTSTREAM(OutStrm);
+                            RequestResponse.WRITE(OutStrm);
+
+                            CLEAR(RequestResponse);
+                            RequestResponse.ADDTEXT(ResultMessage);
+                            E_InvoiceLog."C_IRN Output Response".CREATEOUTSTREAM(OutStrm);
                             E_InvoiceLog."Irn Cancel Date Time" := CancelDateTime;
                             E_InvoiceLog."Error Message" := ErrorMessage;
                             E_InvoiceLog.Modify();

@@ -6,13 +6,109 @@ codeunit 50151 "E-Way Bill Generartion"
     end;
 
     var
-        myInt: Integer;
+        G_Client_ID: Text;
+        G_Client_Secret: Text;
+        G_IP_Address: Text;
+        G_Authenticate_URL: Text;
+        G_Round_GL_Account_1: Code[20];
+        G_Round_GL_Account_2: Code[20];
+        G_E_Invoice_URL: Text;
+        Team001: Label 'Error When Contacting API';
 
-    local procedure ReadActionDetails()
+    procedure GenerateEWayBillFromIRN(DocNo: Code[20]; DocumentType: Option " ",Invoice,"Credit Memo","Transfer Shipment")
     var
-        myInt: Integer;
+        JEWayPayload: JsonObject;
+        EInvoiceSetup: Record "E-Invoice Set Up";
+        GSTIN: Code[20];
+        SalesInvoiceHeader: Record "Sales Invoice Header";
+        SalesCrMemoHeader: Record "Sales Cr.Memo Header";
+        TransferShipmentHeader: Record "Transfer Shipment Header";
+        LocationG: Record Location;
+        PayloadText: Text;
     begin
+        EInvoiceSetup.Get();
+        G_Client_ID := EInvoiceSetup."Client ID";
+        G_Client_Secret := EInvoiceSetup."Client Secret";
+        G_IP_Address := EInvoiceSetup."IP Address";
+        G_Round_GL_Account_1 := EInvoiceSetup."Round GL Account 1";
+        G_Round_GL_Account_2 := EInvoiceSetup."Round GL Account 2";
+        G_Authenticate_URL := EInvoiceSetup."Authentication URL";
+        G_E_Invoice_URL := EInvoiceSetup."E-Invoice URl";
+        case
+            DocumentType of
+            DocumentType::Invoice:
+                begin
+                    if SalesInvoiceHeader.get(DocNo) then begin
+                        GSTIN := SalesInvoiceHeader."Location GST Reg. No.";
+                    end;
+                end;
+            DocumentType::"Credit Memo":
+                begin
+                    if SalesCrMemoHeader.get(DocNo) then
+                        GSTIN := SalesCrMemoHeader."Location GST Reg. No.";
+                end;
+            DocumentType::"Transfer Shipment":
+                begin
+                    if TransferShipmentHeader.get(DocNo) then begin
+                        if LocationG.get(TransferShipmentHeader."Transfer-from Code") then
+                            GSTIN := LocationG."GST Registration No.";
+                    end;
+                end;
+        end;
 
+        ReadActionDetails(JEWayPayload, DocNo, DocumentType);
+        ReadTransDetails(DocNo, DocumentType, JEWayPayload);
+        ReadExpShipDtls(JEWayPayload, DocNo, DocumentType);
+        WriteDispatchDetails(JEWayPayload);
+        JEWayPayload.WriteTo(PayloadText);
+        Message(PayloadText);
+        AuthenticateToken(GSTIN);
+        GenerateEwayRequestSendtobinary(DocNo, DocumentType, PayloadText, GSTIN);
+    end;
+
+
+    local procedure ReadActionDetails(var JReadActionDtls: JsonObject; DocNo: Code[20]; DocumentType: Option " ",Invoice,"Credit Memo","Transfer Shipment")
+    var
+        EWay_SalesInvoiceHeader: Record "Sales Invoice Header";
+        EWay_SalesCrMemoHeader: Record "Sales Cr.Memo Header";
+        EWay_transferShipmentHeader: Record "Transfer Shipment Header";
+        Irnno: Text;
+        Distance: Decimal;
+    begin
+        case
+            DocumentType of
+            DocumentType::Invoice:
+                begin
+                    if EWay_SalesInvoiceHeader.get(DocNo) then begin
+                        Irnno := EWay_SalesInvoiceHeader."IRN Hash";
+                        if EWay_SalesInvoiceHeader."Distance (Km)" <> 0 then
+                            Distance := EWay_SalesInvoiceHeader."Distance (Km)"
+                        else
+                            Distance := 0;
+                    end;
+                end;
+            DocumentType::"Credit Memo":
+                begin
+                    if EWay_SalesCrMemoHeader.get(DocNo) then begin
+                        Irnno := EWay_SalesCrMemoHeader."IRN Hash";
+                        if EWay_SalesCrMemoHeader."Distance (Km)" <> 0 then
+                            Distance := EWay_SalesCrMemoHeader."Distance (Km)"
+                        else
+                            Distance := 0;
+                    end;
+                end;
+            DocumentType::"Transfer Shipment":
+                begin
+                    if EWay_transferShipmentHeader.get(DocNo) then begin
+                        Irnno := EWay_transferShipmentHeader."IRN Hash";
+                        if EWay_transferShipmentHeader."Distance (Km)" <> 0 then
+                            Distance := EWay_transferShipmentHeader."Distance (Km)"
+                        else
+                            Distance := 0;
+                    end;
+                end;
+        end;
+        WriteActionDetails(JReadActionDtls, Irnno, Distance);
     end;
 
     local procedure WriteActionDetails(var JActionDtls: JsonObject; Irn: Text; Distance: Decimal)
@@ -201,6 +297,79 @@ codeunit 50151 "E-Way Bill Generartion"
             JWriteTransDetais.Add('VehType', JsonNull);
     end;
 
+    local procedure ReadExpShipDtls(var JReadExpShip: JsonObject; DocNo: Code[20]; DocumentType: Option " ",Invoice,"Credit Memo","Transfer Shipment")
+    var
+        Ship_SalesInvoiceHeader: Record "Sales Invoice Header";
+        Ship_SalesCrMemoHeader: Record "Sales Cr.Memo Header";
+        Ship_State: Record State;
+        Addrs1: Text;
+        Addrs2: Text;
+        Location: Text;
+        PinCode: Text;
+        StateCode: Code[2];
+        IsExpShipDtls: Boolean;
+    begin
+        IsExpShipDtls := false;
+        case
+            DocumentType of
+            DocumentType::Invoice:
+                begin
+                    if Ship_SalesInvoiceHeader.get(DocNo) then begin
+                        if Ship_SalesInvoiceHeader."Ship-to Code" <> '' then begin
+                            Addrs1 := Ship_SalesInvoiceHeader."Ship-to Address";
+                            Addrs2 := Ship_SalesInvoiceHeader."Ship-to Address 2";
+                            Location := Ship_SalesInvoiceHeader."Ship-to City";
+                            PinCode := Ship_SalesInvoiceHeader."Ship-to Post Code";
+                            if Ship_State.get(Ship_SalesInvoiceHeader."GST Ship-to State Code") then
+                                StateCode := Ship_State."State Code for E-Invoicing";
+                            IsExpShipDtls := true;
+                        end;
+                    end;
+                end;
+            DocumentType::"Credit Memo":
+                begin
+                    if Ship_SalesCrMemoHeader.get(DocNo) then begin
+                        if Ship_SalesCrMemoHeader."Ship-to Code" <> '' then begin
+                            Addrs1 := Ship_SalesCrMemoHeader."Ship-to Address";
+                            Addrs2 := Ship_SalesCrMemoHeader."Ship-to Address 2";
+                            Location := Ship_SalesCrMemoHeader."Ship-to City";
+                            PinCode := Ship_SalesCrMemoHeader."Ship-to Post Code";
+                            if Ship_State.get(Ship_SalesCrMemoHeader."GST Ship-to State Code") then
+                                StateCode := Ship_State."State Code for E-Invoicing";
+                            IsExpShipDtls := true;
+                        end;
+                    end;
+                end;
+        end;
+        WriteExpShipDtls(JReadExpShip, Addrs1, Addrs2, Location, PinCode, StateCode, IsExpShipDtls);
+    end;
+
+    local procedure WriteExpShipDtls(var JWriteShipDtls: JsonObject; Addrs1: Text; Addrs2: Text; Location: Text; PinCode: Text;
+        StateCode: Code[2]; IsExpShipDtls: Boolean)
+    var
+        JWriteShDtls: JsonObject;
+        JsonNull: JsonValue;
+    begin
+        JsonNull.SetValueToNull();
+        if IsExpShipDtls then begin
+            JWriteShDtls.Add('Addr1', Addrs1);
+            JWriteShDtls.Add('Addr2', Addrs2);
+            JWriteShDtls.Add('Loc', Location);
+            JWriteShDtls.Add('Pin', PinCode);
+            JWriteShDtls.Add('Stcd', StateCode);
+            JWriteShipDtls.Add('ExpShipDtls', JWriteShDtls);
+        end else
+            JWriteShipDtls.Add('ExpShipDtls', JsonNull);
+    end;
+
+    local procedure WriteDispatchDetails(Var JwriteDispDtls: JsonObject)
+    var
+        NullValue: JsonValue;
+    begin
+        NullValue.SetValueToNull();
+        JwriteDispDtls.Add('DispDtls', NullValue);
+    end;
+
     local procedure ReturnStr(Amt: Decimal): Text
     begin
         EXIT(DELCHR(FORMAT(Amt), '=', ','));
@@ -230,4 +399,238 @@ codeunit 50151 "E-Way Bill Generartion"
                             exit('4');
         end;
     end;
+
+    local procedure AuthenticateToken(GSTIN: Code[16])
+    var
+        EinvoiceHttpClient: HttpClient;
+        EinvoiceHttpRequest: HttpRequestMessage;
+        EinvoiceHttpContent: HttpContent;
+        EinvoiceHttpHeader: HttpHeaders;
+        EinvoiceHttpResponse: HttpResponseMessage;
+        JOutputObject: JsonObject;
+        JResultToken: JsonToken;
+        JResultObject: JsonObject;
+        OutputMessage: Text;
+        ResultMessage: Text;
+    begin
+        EinvoiceHttpContent.WriteFrom(SetEinvoiceUserIDandPassword(GSTIN));
+        EinvoiceHttpContent.GetHeaders(EinvoiceHttpHeader);
+        EinvoiceHttpHeader.Clear();
+        EinvoiceHttpHeader.Add('client_id', G_Client_ID);
+        EinvoiceHttpHeader.Add('client_secret', G_Client_Secret);
+        EinvoiceHttpHeader.Add('IPAddress', G_IP_Address);
+        EinvoiceHttpHeader.Add('Content-Type', 'application/json');
+        EinvoiceHttpRequest.Content := EinvoiceHttpContent;
+        EinvoiceHttpRequest.SetRequestUri(G_Authenticate_URL);
+        EinvoiceHttpRequest.Method := 'POST';
+        if EinvoiceHttpClient.Send(EinvoiceHttpRequest, EinvoiceHttpResponse) then begin
+            EinvoiceHttpResponse.Content.ReadAs(ResultMessage);
+            JResultObject.ReadFrom(ResultMessage);
+            if JResultObject.Get('MessageId', JResultToken) then
+                if JResultToken.AsValue().AsInteger() = 1 then begin
+                    if JResultObject.Get('Message', JResultToken) then;
+                    //Message(Format(JResultToken));
+                end else
+                    if JResultObject.Get('Message', JResultToken) then
+                        Message(Format(JResultToken));
+            if JResultToken.IsObject then begin
+                JResultToken.WriteTo(OutputMessage);
+                JOutputObject.ReadFrom(OutputMessage);
+            end;
+        end else
+            Message(Team001);
+    end;
+
+    local procedure SetEinvoiceUserIDandPassword(GSTIN: Code[16]) JsonTxt: Text
+    var
+        JsonObj: JsonObject;
+        GSTRegistrationNos: Record "GST Registration Nos.";
+    begin
+        if GSTRegistrationNos.Get(GSTIN) then;
+        JsonObj.Add('action', 'ACCESSTOKEN');
+        JsonObj.Add('UserName', GSTRegistrationNos."User Name");
+        JsonObj.Add('Password', GSTRegistrationNos.Password);
+        JsonObj.Add('Gstin', GSTRegistrationNos.Code);
+        JsonObj.WriteTo(JsonTxt);
+        // Message(JsonTxt);
+    end;
+
+    local procedure GenerateEwayRequestSendtobinary(DocNo: Code[20]; DocumentType: Option " ",Invoice,"Credit Memo","Transfer Shipment"; JsonPayload: Text; GSTIN: Code[20])
+    var
+        Location: Record "Location";
+        EInvoiceLog: Record E_Invoice_Log;
+        Outstrm: OutStream;
+        RequestResponse: BigText;
+        EwayBillN: Text[50];
+        GSTRegistrationNos: Record "GST Registration Nos.";
+        EinvoiceHttpContent: HttpContent;
+        EinvoiceHttpHeader: HttpHeaders;
+        EinvoiceHttpRequest: HttpRequestMessage;
+        EinvoiceHttpClient: HttpClient;
+        EinvoiceHttpResponse: HttpResponseMessage;
+        JOutputObject: JsonObject;
+        JOutputToken: JsonToken;
+        JResultToken: JsonToken;
+        JResultObject: JsonObject;
+        OutputMessage: Text;
+        ResultMessage: Text;
+        EWayBillDate: DateTime;
+        YearCode: Integer;
+        MonthCode: Integer;
+        DayCode: Integer;
+        EwaybillDateText: Text;
+        SalesInvoiceHeader: Record "Sales Invoice Header";
+        SalesCrMemoHeader: Record "Sales Cr.Memo Header";
+        TransferShipmentHeader: Record "Transfer Shipment Header";
+        ErrorMsg: Text;
+        EWayGenerated: Boolean;
+    begin
+        EWayGenerated := false;
+        EwayBillN := '';
+        EwaybillDateText := '';
+        EWayBillDate := 0DT;
+        ErrorMsg := '';
+        if GSTRegistrationNos.get(GSTIN) then;
+        EinvoiceHttpContent.WriteFrom(Format(JsonPayload));
+        EinvoiceHttpContent.GetHeaders(EinvoiceHttpHeader);
+        EinvoiceHttpHeader.Clear();
+        EinvoiceHttpHeader.Add('client_id', G_Client_ID);
+        EinvoiceHttpHeader.Add('client_secret', G_Client_Secret);
+        EinvoiceHttpHeader.Add('IPAddress', G_IP_Address);
+        EinvoiceHttpHeader.Add('Content-Type', 'application/json');
+        EinvoiceHttpHeader.Add('user_name', GSTRegistrationNos."User Name");
+        EinvoiceHttpHeader.Add('Gstin', GSTRegistrationNos.Code);
+        EinvoiceHttpRequest.Content := EinvoiceHttpContent;
+        EinvoiceHttpRequest.SetRequestUri(G_E_Invoice_URL);
+        EinvoiceHttpRequest.Method := 'POST';
+        if EinvoiceHttpClient.Send(EinvoiceHttpRequest, EinvoiceHttpResponse) then begin
+            EinvoiceHttpResponse.Content.ReadAs(ResultMessage);
+            JResultObject.ReadFrom(ResultMessage);
+
+            if JResultObject.Get('MessageId', JResultToken) then
+                if JResultToken.AsValue().AsInteger() = 1 then begin
+                    if JResultObject.Get('Message', JResultToken) then;
+                    //Message(Format(JResultToken));
+                end else begin
+                    if JResultObject.Get('Message', JResultToken) then
+                        ErrorMsg := JResultToken.AsValue().AsText();
+                    Message('%1,%2', ErrorMsg, 'E-Way Bill Generation Failed');
+                end;
+
+            if JResultObject.Get('Data', JResultToken) then
+                if JResultToken.IsObject then begin
+                    JResultToken.WriteTo(OutputMessage);
+                    JOutputObject.ReadFrom(OutputMessage);
+                    if JOutputObject.Get('EwbDt', JOutputToken) then
+                        EwaybillDateText := JOutputToken.AsValue().AsText();
+                    Evaluate(YearCode, CopyStr(EwaybillDateText, 1, 4));
+                    Evaluate(MonthCode, CopyStr(EwaybillDateText, 6, 2));
+                    Evaluate(DayCode, CopyStr(EwaybillDateText, 9, 2));
+                    Evaluate(EWayBillDate, Format(DMY2Date(DayCode, MonthCode, YearCode)) + ' ' + Copystr(EwaybillDateText, 12, 8));
+                    if JOutputObject.Get('EwbNo', JOutputToken) then
+                        EwayBillN := JOutputToken.AsValue().AsText();
+                    EWayGenerated := true;
+                    Message('E-Way Bill Generated Successfully!!');
+                end;
+            case
+                DocumentType of
+                DocumentType::Invoice:
+                    begin
+                        if SalesInvoiceHeader.get(DocNo) then begin
+                            SalesInvoiceHeader."E-Way Bill No." := EwayBillN;
+                            SalesInvoiceHeader."E-Way Bill Date Time" := EWayBillDate;
+                            SalesInvoiceHeader.Modify();
+                        end;
+                        EInvoiceLog.Reset();
+                        EInvoiceLog.SetRange(EInvoiceLog."Document Type", EInvoiceLog."Document Type"::Invoice);
+                        EInvoiceLog.SetRange("IRN Status", EInvoiceLog."IRN Status"::Submitted);
+                        EInvoiceLog.SetRange("No.", DocNo);
+                        if EInvoiceLog.FindFirst() then begin
+                            EInvoiceLog."E-Way Bill No" := EwayBillN;
+                            EInvoiceLog."E-Way Bill Date Time" := EWayBillDate;
+                            if EWayGenerated then
+                                EInvoiceLog."E-Way Bill Status" := EInvoiceLog."E-Way Bill Status"::Submitted
+                            else
+                                EInvoiceLog."E-Way Bill Status" := EInvoiceLog."E-Way Bill Status"::Failed;
+                            EInvoiceLog."Error Message" := ErrorMsg;
+                            CLEAR(RequestResponse);
+                            RequestResponse.ADDTEXT(JsonPayload);
+                            EInvoiceLog."G_E-Way bill Sent Request".CREATEOUTSTREAM(Outstrm);
+                            RequestResponse.WRITE(Outstrm);
+                            CLEAR(RequestResponse);
+                            RequestResponse.ADDTEXT(JsonPayload);
+                            EInvoiceLog."G_E-Way bill Output Response".CREATEOUTSTREAM(Outstrm);
+                            RequestResponse.WRITE(Outstrm);
+                            EInvoiceLog.Modify();
+
+                        end;
+                    end;
+                DocumentType::"Credit Memo":
+                    begin
+                        if SalesCrMemoHeader.get(DocNo) then begin
+                            SalesCrMemoHeader."E-Way Bill No." := EwayBillN;
+                            SalesCrMemoHeader."E-Way Bill Date Time" := EWayBillDate;
+                            SalesCrMemoHeader.Modify();
+                        end;
+                        EInvoiceLog.Reset();
+                        EInvoiceLog.SetRange(EInvoiceLog."Document Type", EInvoiceLog."Document Type"::"Credit Memo");
+                        EInvoiceLog.SetRange("IRN Status", EInvoiceLog."IRN Status"::Submitted);
+                        EInvoiceLog.SetRange("No.", DocNo);
+                        if EInvoiceLog.FindFirst() then begin
+                            EInvoiceLog."E-Way Bill No" := EwayBillN;
+                            EInvoiceLog."E-Way Bill Date Time" := EWayBillDate;
+                            if EWayGenerated then
+                                EInvoiceLog."E-Way Bill Status" := EInvoiceLog."E-Way Bill Status"::Submitted
+                            else
+                                EInvoiceLog."E-Way Bill Status" := EInvoiceLog."E-Way Bill Status"::Failed;
+                            EInvoiceLog."Error Message" := ErrorMsg;
+                            CLEAR(RequestResponse);
+                            RequestResponse.ADDTEXT(JsonPayload);
+                            EInvoiceLog."G_E-Way bill Sent Request".CREATEOUTSTREAM(Outstrm);
+                            RequestResponse.WRITE(Outstrm);
+                            CLEAR(RequestResponse);
+                            RequestResponse.ADDTEXT(JsonPayload);
+                            EInvoiceLog."G_E-Way bill Output Response".CREATEOUTSTREAM(Outstrm);
+                            RequestResponse.WRITE(Outstrm);
+                            EInvoiceLog.Modify();
+
+                        end;
+                    end;
+                DocumentType::"Transfer Shipment":
+                    begin
+                        if TransferShipmentHeader.get(DocNo) then begin
+                            TransferShipmentHeader."E-Way Bill No." := EwayBillN;
+                            TransferShipmentHeader."E-Way Bill Date Time" := EWayBillDate;
+                            TransferShipmentHeader.Modify();
+                        end;
+                        EInvoiceLog.Reset();
+                        EInvoiceLog.SetRange(EInvoiceLog."Document Type", EInvoiceLog."Document Type"::Invoice);
+                        EInvoiceLog.SetRange("IRN Status", EInvoiceLog."IRN Status"::Submitted);
+                        EInvoiceLog.SetRange("No.", DocNo);
+                        if EInvoiceLog.FindFirst() then begin
+                            EInvoiceLog."E-Way Bill No" := EwayBillN;
+                            EInvoiceLog."E-Way Bill Date Time" := EWayBillDate;
+                            if EWayGenerated then
+                                EInvoiceLog."E-Way Bill Status" := EInvoiceLog."E-Way Bill Status"::Submitted
+                            else
+                                EInvoiceLog."E-Way Bill Status" := EInvoiceLog."E-Way Bill Status"::Failed;
+                            EInvoiceLog."Error Message" := ErrorMsg;
+                            CLEAR(RequestResponse);
+                            RequestResponse.ADDTEXT(JsonPayload);
+                            EInvoiceLog."G_E-Way bill Sent Request".CREATEOUTSTREAM(Outstrm);
+                            RequestResponse.WRITE(Outstrm);
+                            CLEAR(RequestResponse);
+                            RequestResponse.ADDTEXT(JsonPayload);
+                            EInvoiceLog."G_E-Way bill Output Response".CREATEOUTSTREAM(Outstrm);
+                            RequestResponse.WRITE(Outstrm);
+                            EInvoiceLog.Modify();
+
+                        end;
+                    end;
+            end;
+        end else
+            Message(Team001);
+    end;
+
+
 }

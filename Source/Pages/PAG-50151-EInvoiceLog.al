@@ -55,6 +55,18 @@ page 50312 "E-Invoice Log"
                 {
                     ApplicationArea = all;
                 }
+                field("E-Way Bill No"; Rec."E-Way Bill No")
+                {
+                    ApplicationArea = all;
+                }
+                field("E-Way Bill Date Time"; Rec."E-Way Bill Date Time")
+                {
+                    ApplicationArea = all;
+                }
+                field("E-Way Bill Status"; Rec."E-Way Bill Status")
+                {
+                    ApplicationArea = all;
+                }
                 /* field("Sent Response"; SendResponse)
                 {
 
@@ -113,24 +125,72 @@ page 50312 "E-Invoice Log"
                     end;
                 end;
             } */
-            action("Sent Request IRN")
+            action("Generate IRN Sent Request")
             {
                 ApplicationArea = All;
                 Promoted = true;
                 trigger OnAction()
+                var
+                    TempBlob: Codeunit "Temp Blob";
+                    Instrm: InStream;
+                    FileName: Text;
                 begin
-                    Rec.CALCFIELDS("Sent Response");
-                    MESSAGE(Rec.SentResponseReadAsText('', TEXTENCODING::UTF8));
+                    Rec.CALCFIELDS("G_IRN Sent Request");
+                    MESSAGE(Rec.GenerateIRNSentResponseReadAsText('', TEXTENCODING::UTF8));
+                    Rec."G_IRN Sent Request".CreateInStream(Instrm);
+                    FileName := Rec."No." + '.txt';
+                    DownloadFromStream(Instrm, 'Export', '', 'All Files (*.*)|*.*', FileName);
                 end;
             }
-            action("OutPut Request IRN")
+            action("Generate IRN Output Request")
             {
                 ApplicationArea = All;
                 Promoted = true;
                 trigger OnAction()
                 begin
-                    Rec.CALCFIELDS("Output Response");
-                    MESSAGE(Rec.OutPutResponseReadAsText('', TEXTENCODING::UTF8));
+                    Rec.CALCFIELDS("G_IRN Output Response");
+                    MESSAGE(Rec.GenerateIRNOutPutResponseReadAsText('', TEXTENCODING::UTF8));
+                end;
+            }
+            action("Cancel IRN Sent Request")
+            {
+                ApplicationArea = All;
+                Promoted = true;
+                trigger OnAction()
+                begin
+                    Rec.CALCFIELDS("C_IRN Sent Request");
+                    MESSAGE(Rec.GenerateIRNOutPutResponseReadAsText('', TEXTENCODING::UTF8));
+                end;
+            }
+            action("Cancel IRN OutPut Request")
+            {
+                ApplicationArea = All;
+                Promoted = true;
+                trigger OnAction()
+                begin
+                    Rec.CALCFIELDS("C_IRN Output Response");
+                    MESSAGE(Rec.GenerateIRNOutPutResponseReadAsText('', TEXTENCODING::UTF8));
+                end;
+            }
+
+            action("Generate E-Way bill Sent Request")
+            {
+                ApplicationArea = All;
+                Promoted = true;
+                trigger OnAction()
+                begin
+                    Rec.CALCFIELDS("G_E-Way bill Sent Request");
+                    MESSAGE(Rec.GenerateIRNOutPutResponseReadAsText('', TEXTENCODING::UTF8));
+                end;
+            }
+            action("Generate E-Way bill Output Request")
+            {
+                ApplicationArea = All;
+                Promoted = true;
+                trigger OnAction()
+                begin
+                    Rec.CALCFIELDS("G_E-Way bill Output Response");
+                    MESSAGE(Rec.GenerateIRNOutPutResponseReadAsText('', TEXTENCODING::UTF8));
                 end;
             }
         }

@@ -18,6 +18,10 @@ tableextension 50156 EInvSalesCrMemoHeader extends "Sales Cr.Memo Header"
         {
             DataClassification = EndUserIdentifiableInformation;
         }
+        field(50154; "E-Way Bill Date Time"; DateTime)
+        {
+            DataClassification = ToBeClassified;
+        }
     }
 
     var
