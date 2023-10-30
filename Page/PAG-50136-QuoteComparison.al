@@ -4,7 +4,7 @@ page 50136 "PAG-50136-QuoteComparison"
     Caption = 'Quote Comparison';
     PageType = List;
     SourceTable = "Quote Comparison";
-    SourceTableView = where(Status = filter(Open | "Pending Approval" | Rejected));
+    SourceTableView = where(Status = filter(Open));
     UsageCategory = Lists;
     DeleteAllowed = false;
 
@@ -14,10 +14,7 @@ page 50136 "PAG-50136-QuoteComparison"
         {
             repeater(General)
             {
-                field(Select; Rec.Select)
-                {
-                    ToolTip = 'Specifies the value of the Select field.';
-                }
+
                 field("Entry No."; Rec."Entry No.")
                 {
                     Editable = false;
@@ -69,6 +66,10 @@ page 50136 "PAG-50136-QuoteComparison"
                 {
                     ToolTip = 'Specifies the value of the Indent Line No field.';
                     Editable = false;
+                }
+                field(Select; Rec.Select)
+                {
+                    ToolTip = 'Specifies the value of the Select field.';
                 }
                 field("Substrate Code"; Rec."Substrate Code")
                 {
@@ -136,9 +137,12 @@ page 50136 "PAG-50136-QuoteComparison"
                         QuoteComparision_Loc.Reset();
                         QuoteComparision_Loc.SetRange("Indent No.", Rec."Indent No.");
                         QuoteComparision_Loc.SetRange("Indent Line No", Rec."Indent Line No");
+                        QuoteComparision_Loc.SetRange(Type, Rec.Type);
+                        QuoteComparision_Loc.SetRange(No, Rec.No);
                         IF QuoteComparision_Loc.FindSet() then begin
                             repeat
-                                TotalPOQty += QuoteComparision_Loc."PO Qty.";
+                                IF (QuoteComparision_Loc."Entry No." <> Rec."Entry No.") then
+                                    TotalPOQty += QuoteComparision_Loc."PO Qty.";
                             until QuoteComparision_Loc.Next() = 0;
 
                             IF ((Rec."Indent Approved Quantity" - TotalPOQty - Rec."PO Qty.")) < 0 then
@@ -178,64 +182,6 @@ page 50136 "PAG-50136-QuoteComparison"
         {
             group(Re_Open)
             {
-                action("ReOpen")
-                {
-                    ApplicationArea = Basic, Suite;
-                    Caption = 'ReOpen';
-                    Promoted = true;
-                    PromotedCategory = New;
-                    PromotedIsBig = true;
-                    Image = Statistics;
-
-                    trigger OnAction()
-                    var
-                    begin
-                        Rec.SetRange(Select, true);
-                        Rec.SetRange(Status, Rec.Status::Rejected);
-                        IF Rec.FindSet() then begin
-                            repeat
-                                Rec.Status := Rec.Status::Open;
-                                Rec.Select := false;
-                                Rec.Modify();
-                            until Rec.Next() = 0;
-                            Message('Rejected entries has been ReOpened');
-                            Rec.Reset();
-                            Rec.SetFilter(Status, '%1|%2|%3', Rec.Status::Open, Rec.Status::"Pending Approval", Rec.Status::Rejected);
-                            CurrPage.Update(true);
-                        end else
-                            Message('Lines should be selected and status must be rejected to Reopen');
-                    end;
-                }
-
-                // action("Test")
-                // {
-                //     ApplicationArea = Basic, Suite;
-                //     Caption = 'Test';
-                //     Promoted = true;
-                //     PromotedCategory = New;
-                //     PromotedIsBig = true;
-                //     Image = Statistics;
-
-                //     trigger OnAction()
-                //     var
-                //         PostedIndentHeader: Record "Posted Indent Header";
-                //         PostedIndentLine: Record "Posted Indent Line";
-                //     begin
-                //         PostedIndentHeader.Reset();
-                //         PostedIndentHeader.SetRange("No.", 'P-IND-123');
-                //         IF PostedIndentHeader.FindFirst() then begin
-                //             PostedIndentHeader.Status := PostedIndentHeader.Status::Approved;
-                //             PostedIndentHeader.Modify();
-                //             PostedIndentLine.Reset();
-                //             PostedIndentLine.SetRange("Indent No.", PostedIndentHeader."No.");
-                //             IF PostedIndentLine.FindSet() then
-                //                 PostedIndentLine.ModifyAll(Status, PostedIndentLine.Status::Approved);
-
-                //         end;
-                //         Message('done');
-                //     end;
-                // }
-
                 action("Cancellation")
                 {
                     ApplicationArea = Basic, Suite;
@@ -247,24 +193,64 @@ page 50136 "PAG-50136-QuoteComparison"
 
                     trigger OnAction()
                     var
+                        QuoteComparison: Record "Quote Comparison";
+                        QuoteComparison_Loc: Record "Quote Comparison";
+                        PostedIndentLines: Record "Posted Indent Line";
+                        QuoteComparison_Temp: Record "Quote Comparison" temporary;
                     begin
                         IF NOT CONFIRM('Do you want to cancel selected Lines') THEN
                             EXIT;
 
-                        Rec.SetRange(Select, true);
-                        IF Rec.FindSet() then begin
-                            repeat
-                                Rec.Status := Rec.Status::Cancelled;
-                                Rec.Select := false;
-                                Rec.Modify();
+                        IF QuoteComparison_Temp.IsTemporary then
+                            QuoteComparison_Temp.DeleteAll();
 
-                            until Rec.Next() = 0;
-                            Rec.Reset();
-                            Rec.SetFilter(Status, '%1|%2|%3', Rec.Status::Open, Rec.Status::"Pending Approval", Rec.Status::Rejected);
-                            CurrPage.Update(true);
-                            Message('Selected Lines has been cancelled');
+                        QuoteComparison.SetRange(Select, true);
+                        IF QuoteComparison.FindSet() then begin
+                            repeat
+                                IF (QuoteComparison."Indent No." <> '') then begin
+                                    IF not QuoteComparison_Temp.Get(QuoteComparison."Entry No.") then begin
+                                        QuoteComparison_Temp.Init();
+                                        QuoteComparison_Temp."Entry No." := QuoteComparison."Entry No.";
+                                        QuoteComparison_Temp.Insert();
+                                    end;
+                                end else begin
+                                    PostedIndentLines.Reset();
+                                    PostedIndentLines.SetRange("Indent No.", QuoteComparison."Indent No.");
+                                    PostedIndentLines.SetFilter("Approved Qty", '<>%1', 0);
+                                    IF PostedIndentLines.FindSet() then begin
+                                        repeat
+                                            QuoteComparison_Loc.Reset();
+                                            QuoteComparison_Loc.SetRange(Status, QuoteComparison_Loc.Status::Open);
+                                            QuoteComparison_Loc.SetRange("Indent No.", PostedIndentLines."Indent No.");
+                                            QuoteComparison_Loc.SetRange("Indent Line No", PostedIndentLines."Line No");
+                                            IF QuoteComparison_Loc.FindSet() then begin
+                                                repeat
+                                                    IF not QuoteComparison_Temp.Get(QuoteComparison_Loc."Entry No.") then begin
+                                                        QuoteComparison_Temp.Init();
+                                                        QuoteComparison_Temp."Entry No." := QuoteComparison_Loc."Entry No.";
+                                                        QuoteComparison_Temp.Insert();
+                                                    end;
+                                                until QuoteComparison_Loc.Next() = 0;
+                                            end;
+                                        until PostedIndentLines.Next() = 0;
+                                    end;
+                                end;
+                            until QuoteComparison.Next() = 0;
                         end else
-                            Message('Lines must be selected before cancel');
+                            Error('Lines must be selected before cancel');
+                        Clear(QuoteComparison);
+                        QuoteComparison_Temp.Reset();
+                        IF QuoteComparison_Temp.FindSet() then begin
+                            repeat
+                                IF QuoteComparison.Get(QuoteComparison_Temp."Entry No.") then begin
+                                    QuoteComparison.Status := QuoteComparison.Status::Cancelled;
+                                    QuoteComparison.Select := false;
+                                    QuoteComparison.Modify();
+                                end
+
+                            until QuoteComparison_Temp.Next() = 0;
+                        end;
+                        Message('Selected Lines has been cancelled');
                     end;
                 }
             }
@@ -289,11 +275,12 @@ page 50136 "PAG-50136-QuoteComparison"
                         QuoteComparision_Loc1: Record "Quote Comparison";
                         EntryNo_Loc: Integer;
                         IndentLinecreated: Boolean;
-
+                        ItemNo_Loc: Code[20];
+                        PriorityOrder: Integer;
+                        IndentLine_Temp: Record "Pre Indent Line" temporary;
                     begin
                         Clear(EntryNo_Loc);
                         QuoteComparision_Loc.Reset();
-                        QuoteComparision_Loc.SetCurrentKey("Entry No.");
                         QuoteComparision_Loc.SetFilter("Entry No.", '<>%1', 0);
                         IF QuoteComparision_Loc.FindLast() then begin
                             EntryNo_Loc := QuoteComparision_Loc."Entry No.";
@@ -523,6 +510,7 @@ page 50136 "PAG-50136-QuoteComparison"
                                         end;
                                     until IndentLines_Loc.Next() = 0;
                                 end;
+
                                 Clear(IndentLines_Loc);
                                 IndentLines_Loc.Reset();
                                 IndentLines_Loc.SetRange("Indent No.", IndnetHeader_Loc."No.");
@@ -530,466 +518,606 @@ page 50136 "PAG-50136-QuoteComparison"
                                 IndentLines_Loc.SetRange(Status, IndentLines_Loc.Status::Approved);
                                 if not IndentLines_Loc.FindSet() then begin
                                     IndnetHeader_Loc.Status := IndnetHeader_Loc.Status::Closed;
-                                    IndnetHeader_Loc.Modify(true);
+                                    IndnetHeader_Loc.Modify();
                                 end;
                             until IndnetHeader_Loc.Next() = 0;
-                            Rec.Reset();
-                            Rec.SetFilter(Status, '%1|%2|%3', Rec.Status::Open, Rec.Status::"Pending Approval", Rec.Status::Rejected);
-                            CurrPage.Update();
+                            Commit();
                             Message('Quote Comparison Lines has been generated');
                         end else
                             Message('there are no Indent approved lines to generate Quote Comparison Lines');
-                    end;
-                }
-                action("Set Priority Cost Wise")
-                {
-                    ApplicationArea = Basic, Suite;
-                    Caption = 'Set Priority Cost Wise';
-                    Promoted = true;
-                    PromotedCategory = Process;
-                    PromotedIsBig = true;
-                    Image = Statistics;
-
-                    trigger OnAction()
-                    var
-                        QuoteComparison_Loc: Record "Quote Comparison";
-                        ItemNo_Loc: Code[20];
-                        PriorityOrder: Integer;
-                    begin
-                        IF NOT CONFIRM('Do you want to set prioroty order cost wise') THEN
-                            EXIT;
 
                         Clear(ItemNo_Loc);
-                        QuoteComparison_Loc.Reset();
-                        QuoteComparison_Loc.SetCurrentKey(Type, No, "Unit Cost");
-                        QuoteComparison_Loc.SetFilter(Status, '%1', QuoteComparison_Loc.Status::Open);
-                        IF QuoteComparison_Loc.FindFirst() then begin
+                        Clear(EntryNo_Loc);
+                        IF IndentLine_Temp.IsTemporary then
+                            IndentLine_Temp.DeleteAll();
+                        Clear(QuoteComparision_Loc);
+                        QuoteComparision_Loc.Reset();
+                        QuoteComparision_Loc.SetCurrentKey("Indent No.", Type, No, "Unit Cost");
+                        QuoteComparision_Loc.SetFilter(Status, '%1', QuoteComparision_Loc.Status::Open);
+                        IF QuoteComparision_Loc.FindFirst() then begin
                             repeat
-                                IF (ItemNo_Loc <> QuoteComparison_Loc.No) then begin
-                                    Clear(PriorityOrder);
-                                    ItemNo_Loc := QuoteComparison_Loc.No;
-                                end;
-                                PriorityOrder += 1;
-                                QuoteComparison_Loc."Priority No." := 'L' + Format(PriorityOrder);
-                                QuoteComparison_Loc.Modify();
-                            until QuoteComparison_Loc.Next() = 0;
-                            // Rec.Reset();
-                            // Rec.SetFilter(Status, '%1|%2|%3', Rec.Status::Open, Rec.Status::"Pending Approval", Rec.Status::Rejected);
-                            // CurrPage.Update();
-                            Message('Priority Order has been set');
-                        end else
-                            Message('There are no lines with Status - Open, to set priority orders');
-                    end;
-                }
-            }
+                                IndentLine_Temp.Reset();
+                                IF (QuoteComparision_Loc."Indent No." = '') then
+                                    IndentLine_Temp.SetFilter("Indent No.", 'BLANK')
+                                else
+                                    IndentLine_Temp.SetRange("Indent No.", QuoteComparision_Loc."Indent No.");
+                                IndentLine_Temp.SetRange(Type, QuoteComparision_Loc.Type);
+                                IndentLine_Temp.SetRange("No.", QuoteComparision_Loc.No);
+                                IF not IndentLine_Temp.FindFirst() then begin
 
-            group(Approvals)
-            {
-                action("Send For Approval")
-                {
-                    Promoted = true;
-                    PromotedIsBig = true;
-                    PromotedCategory = Process;
-                    ApplicationArea = all;
-                    trigger OnAction()
-                    var
-                        EntryNo: Integer;
-                        AppEntryIndentEntryno: Record "Approval Entry Indent";
-                        ApprovalEntryIndent: Record "Approval Entry Indent";
-                        usersetup: Record "User Setup";
-                        usersetup1: Record "User Setup";
-                        //----------------->>
-                        EmailObj: Codeunit Email;
-                        EmailMsg: Codeunit "Email Message";
-                        CCMailIdList: List of [Text];
-                        BccMailIdList: List of [Text];
-                        BodyTxt: Text;
-                        MailUserIdVar: List of [Text];
-                        MailSubject: Text;
-                        MailUserid: Text;
-                        MailComapnyName: Text;
-                        CompInfo: Record "Company Information";
-                        VarUserSetup: Record "User Setup";
-                        UserEmail: Text;
-                        VarapproverSetup: Record "User Setup";
-                        approveremail: Text;
-                    //<<--------------
-                    begin
-                        IF NOT CONFIRM('Do you want to send for approval') THEN
-                            EXIT;
-
-                        Clear(EntryNo);
-                        if AppEntryIndentEntryno.FindLast then
-                            EntryNo := AppEntryIndentEntryno."Entry No.";
-
-                        Rec.Reset();
-                        Rec.SetRange(Status, Rec.Status::Open);
-                        Rec.SetRange(Select, true);
-                        Rec.SetRange("Unit Cost", 0);
-                        IF Rec.FindFirst() then
-                            Error(StrSubstNo('Unit Cost must have a value in line with entry no %1', Rec."Entry No."));
-
-                        Rec.Reset();
-                        Rec.SetRange(Status, Rec.Status::Open);
-                        Rec.SetRange(Select, true);
-                        Rec.SetRange("PO Qty.", 0);
-                        IF Rec.FindFirst() then
-                            Error(StrSubstNo('Po Qty must have a value in line with entry no %1', Rec."Entry No."));
-
-                        Rec.Reset();
-                        Rec.SetRange(Status, Rec.Status::Open);
-                        Rec.SetRange(Select, true);
-                        Rec.SetRange(Rec.No, '');
-                        IF Rec.FindFirst() then
-                            Error(StrSubstNo('Item must have a value in line with entry no %1', Rec."Entry No."));
-
-
-                        Rec.Reset();
-                        Rec.SetRange(Status, Rec.Status::Open);
-                        Rec.SetRange(Select, true);
-                        Rec.SetRange(Rec."Vendor Code", '');
-                        IF Rec.FindFirst() then
-                            Error(StrSubstNo('Vendor must have a value in line with entry no %1', Rec."Entry No."));
-
-                        Rec.Reset();
-                        Rec.SetRange(Status, Rec.Status::Open);
-                        Rec.SetRange(Select, true);
-                        IF Rec.FindSet() then begin
-
-                            //>>Mail Header
-                            Clear(MailUserIdVar);
-                            Clear(BccMailIdList);
-                            Clear(CCMailIdList);
-                            MailUserid := UserId;
-                            VarUserSetup.Reset();
-                            VarUserSetup.SetRange("User ID", UserId);
-                            if VarUserSetup.FindFirst() then
-                                UserEmail := VarUserSetup."E-Mail";
-
-                            VarUserSetup.TestField("Quote Comp. Approver ID");
-                            VarapproverSetup.Reset();
-                            VarapproverSetup.SetRange("User ID", VarUserSetup."Quote Comp. Approver ID");
-                            if VarapproverSetup.FindFirst() then begin
-                                approveremail := VarapproverSetup."E-Mail";
-                                MailUserIdVar.Add(approveremail);
-                            end;
-
-                            MailComapnyName := CompanyName;
-                            MailSubject := 'Quote Comparision for date ' + Format(Today()) + ' ' + CompanyName;
-
-                            BodyTxt := 'Dear Sir/Madam,';
-                            BodyTxt += '<br></br>';
-                            BodyTxt := 'Please find the below Quote Comparision for approval:';
-                            BodyTxt += '<br></br>';
-                            BodyTxt += '<TABLE border = "2">';
-                            BodyTxt += '<TH>Indent No.</TH>';
-                            BodyTxt += '<TH>Indent Line No.</TH>';
-                            BodyTxt += '<TH>Type</TH>';
-                            BodyTxt += '<TH>Description</TH>';
-                            BodyTxt += '<TH>Vendor Name</TH>';
-                            BodyTxt += '<TH>Quantity</TH>';
-                            BodyTxt += '<TH>Unit Cost</TH>';
-                            BodyTxt += '<TH>Actual PO Qty.</TH>';
-                            BodyTxt += '<TH>Actual PO Cost</TH>';
-                            BodyTxt += '<TH>Entry No.</TH>';
-                            BodyTxt += '<TH>Priority</TH>';
-                            BodyTxt += '<TH>Status</TH>';
-                            BodyTxt += '<TH>Remarks</TH>';
-                            BodyTxt += '</TR>';
-                            //<<Mail Header
-
-                            repeat
-                                ApprovalEntryIndent.Init;
-                                EntryNo += 1;
-                                ApprovalEntryIndent."Entry No." := EntryNo;
-                                ApprovalEntryIndent."Quote Comparison Entry No." := Rec."Entry No.";
-                                ApprovalEntryIndent."Sender UserID" := UserId;
-                                usersetup.Get(UserId);
-                                usersetup.TestField("Quote Comp. Approver ID");
-                                if usersetup1.get(usersetup."Quote Comp. Approver ID") then begin
-                                    if (Rec."PO Qty." * Rec."Unit Cost") <= usersetup1."Quote Comp. Approval Limit" then
-                                        ApprovalEntryIndent."Approver UserID" := usersetup1."User ID"
+                                    IndentLine_Temp.Init();
+                                    IF (QuoteComparision_Loc."Indent No." = '') then
+                                        IndentLine_Temp."Indent No." := 'BLANK'
                                     else
-                                        ApprovalEntryIndent."Approver UserID" := usersetup1."Approver ID";
+                                        IndentLine_Temp."Indent No." := QuoteComparision_Loc."Indent No.";
+                                    EntryNo_Loc += 10000;
+                                    IndentLine_Temp."Line No" := EntryNo_Loc;
+                                    IndentLine_Temp.Type := QuoteComparision_Loc.Type;
+                                    IndentLine_Temp."No." := QuoteComparision_Loc.No;
+                                    IndentLine_Temp.Insert();
+                                    IF QuoteComparision_Loc1.Get(QuoteComparision_Loc."Entry No.") then begin
+                                        Clear(PriorityOrder);
+                                        PriorityOrder += 1;
+                                        QuoteComparision_Loc1."Priority No." := 'L' + Format(PriorityOrder);
+                                        QuoteComparision_Loc1.Modify();
+                                    end;
+                                end else begin
+                                    IF QuoteComparision_Loc1.Get(QuoteComparision_Loc."Entry No.") then begin
+                                        PriorityOrder += 1;
+                                        QuoteComparision_Loc1."Priority No." := 'L' + Format(PriorityOrder);
+                                        QuoteComparision_Loc1.Modify();
+                                    end;
                                 end;
-                                ApprovalEntryIndent.Status := ApprovalEntryIndent.Status::"Sent for approval";
-                                ApprovalEntryIndent."Sent for approval" := true;
-                                ApprovalEntryIndent."Send DateTime" := CurrentDateTime;
-                                ApprovalEntryIndent.Insert;
+                            until QuoteComparision_Loc.Next() = 0;
+                        end;
 
-                                Rec.Status := Rec.Status::"Pending Approval";
-                                Rec."Approver UserID" := ApprovalEntryIndent."Approver UserID";
-                                Rec.Select := false;
-                                Rec."Sender UserID" := UserId;
-                                Rec."Send DateTime" := CurrentDateTime;
-                                Rec.Modify();
-
-                                //>Mail Body
-                                BodyTxt += '<TR>';
-                                BodyTxt += '<TD>' + Format(Rec."Indent No.") + '</TD>';
-                                BodyTxt += '<TD>' + Format(Rec."Indent Line No") + '</TD>';
-                                BodyTxt += '<TD>' + Format(Rec.Type) + '</TD>';
-                                BodyTxt += '<TD>' + Format(Rec.Description) + '</TD>';
-                                BodyTxt += '<TD>' + Format(Rec."Vendor Name") + '</TD>';
-                                BodyTxt += '<TD>' + Format(Rec."Indent Approved Quantity") + '</TD>';
-                                BodyTxt += '<TD>' + Format(Rec."Unit Cost") + '</TD>';
-                                BodyTxt += '<TD>' + Format(Rec."PO Qty.") + '</TD>';
-                                BodyTxt += '<TD>' + format(Round(Rec."Total PO Qty. Cost", 0.01, '=')) + '</TD>';
-                                BodyTxt += '<TD>' + Format(Rec."Entry No.") + '</TD>';
-                                BodyTxt += '<TD>' + Format(Rec."Priority No.") + '</TD>';
-                                BodyTxt += '<TD>' + format(Rec.Status) + '</TD>';
-                                BodyTxt += '<TD>' + Rec.Remarks + '</TD>';
-                                BodyTxt += '</TR>';
-                            //<<Mail Body
-
-                            until Rec.Next() = 0;
-
-                            //>>Mail Footer
-                            BodyTxt += '</table>';
-                            BodyTxt += '<br></br>';
-                            BodyTxt += 'Regards';
-                            BodyTxt += '<br></br>';
-                            BodyTxt += MailUserid;
-                            BodyTxt += '<br></br>';
-                            CompInfo.get();
-                            BodyTxt += CompInfo.Name;
-
-                            EmailMsg.Create(MailUserIdVar, MailSubject, BodyTxt, true, CCMailIdList, BccMailIdList);
-                            EmailObj.Send(EmailMsg, Enum::"Email Scenario"::Default);
-                            //<<Mail Footer
-
-                            Rec.Reset();
-                            Rec.SetFilter(Status, '%1|%2|%3', Rec.Status::Open, Rec.Status::"Pending Approval", Rec.Status::Rejected);
-                            CurrPage.Update();
-                            Message('Quote Comparison Entries has been sent for approval successfully.');
-                        end else
-                            Message('There are no lines are selected');
+                        CurrPage.Update();
                     end;
                 }
-                action("Cancel Approval")
+
+                group(Approvals)
                 {
-                    Promoted = true;
-                    PromotedIsBig = true;
-                    PromotedCategory = Process;
-                    ApplicationArea = all;
-                    trigger OnAction()
-                    var
-                        EntryNo: Integer;
-                        AppEntryIndentEntryno: Record "Approval Entry Indent";
-                        ApprovalEntryIndent: Record "Approval Entry Indent";
-                    begin
-                        Rec.SetRange(Select, true);
-                        Rec.SetRange(Status, Rec.Status::"Pending Approval");
-                        Rec.SetRange(Remarks, '');
-                        IF Rec.FindFirst() then
-                            Error(StrSubstNo('Remarks must have a value for a line with Entry No. %1', Rec."Entry No."));
 
-                        IF NOT CONFIRM('Do you want to Cancel - Pending Approval lines') THEN
-                            EXIT;
+                    action("Send For Approval")
+                    {
+                        Promoted = true;
+                        PromotedIsBig = true;
+                        PromotedCategory = Process;
+                        ApplicationArea = all;
+                        trigger OnAction()
+                        var
+                            QuoteComparision_Loc: Record "Quote Comparison";
+                            EntryNo: Integer;
+                            AppEntryIndentEntryno: Record "Approval Entry Indent";
+                            ApprovalEntryIndent: Record "Approval Entry Indent";
+                            usersetup: Record "User Setup";
+                            usersetup1: Record "User Setup";
+                            PostedIndentHeader: Record "Posted Indent Header";
+                            PostedIndentLine: Record "Posted Indent Line";
+                            //----------------->>
+                            EmailObj: Codeunit Email;
+                            EmailMsg: Codeunit "Email Message";
+                            CCMailIdList: List of [Text];
+                            BccMailIdList: List of [Text];
+                            BodyTxt: Text;
+                            MailUserIdVar: List of [Text];
+                            MailSubject: Text;
+                            MailUserid: Text;
+                            MailComapnyName: Text;
+                            CompInfo: Record "Company Information";
+                            VarUserSetup: Record "User Setup";
+                            UserEmail: Text;
+                            VarapproverSetup: Record "User Setup";
+                            approveremail: Text;
+                            QuoteComparision_Loc_1: Record "Quote Comparison";
+                            QuoteComparision_Loc_2: Record "Quote Comparison";
+                            ErrorText01: Text[150];
+                            ErrorText02: Text[150];
+                            TotalPOQty_Var: Decimal;
+                        //<<--------------
+                        begin
+                            IF NOT CONFIRM('Do you want to send for approval') THEN
+                                EXIT;
 
-                        Rec.Reset();
-                        Rec.SetRange(Select, true);
-                        Rec.SetRange(Status, Rec.Status::"Pending Approval");
-                        IF Rec.FindSet() then begin
                             Clear(EntryNo);
                             if AppEntryIndentEntryno.FindLast then
                                 EntryNo := AppEntryIndentEntryno."Entry No.";
 
-                            repeat
-                                AppEntryIndentEntryno.Reset();
-                                AppEntryIndentEntryno.SetRange("Quote Comparison Entry No.", Rec."Entry No.");
-                                if AppEntryIndentEntryno.FindSet then
-                                    repeat
-                                        AppEntryIndentEntryno."Sent for approval" := false;
-                                        AppEntryIndentEntryno.Modify;
-                                    until AppEntryIndentEntryno.Next = 0;
+                            QuoteComparision_Loc_1.Reset();
+                            QuoteComparision_Loc_1.SetCurrentKey(Status, Select);
+                            QuoteComparision_Loc_1.SetRange(Status, QuoteComparision_Loc_1.Status::Open);
+                            QuoteComparision_Loc_1.SetRange(Select, true);
+                            if QuoteComparision_Loc_1.FindSet() then begin
+                                repeat
+                                    QuoteComparision_Loc_1.TestField("Unit Cost");
+                                    QuoteComparision_Loc_1.TestField("PO Qty.");
+                                    QuoteComparision_Loc_1.TestField(Type);
+                                    QuoteComparision_Loc_1.TestField(No);
+                                    QuoteComparision_Loc_1.TestField("Vendor Code");
 
-                                ApprovalEntryIndent.Init;
-                                EntryNo += 1;
-                                ApprovalEntryIndent."Entry No." := EntryNo;
-                                ApprovalEntryIndent."Quote Comparison Entry No." := Rec."Entry No.";
-                                ApprovalEntryIndent."Cancel UserID" := UserId;
-                                ApprovalEntryIndent."Cancel DateTime" := CurrentDateTime;
-                                ApprovalEntryIndent.Status := ApprovalEntryIndent.Status::Cancel;
-                                ApprovalEntryIndent."Sent for approval" := false;
-                                ApprovalEntryIndent.Insert;
+                                    IF (QuoteComparision_Loc_1."Indent No." <> '') and (PostedIndentHeader.get(QuoteComparision_Loc_1."Indent No.")) then begin
+                                        PostedIndentLine.Reset();
+                                        PostedIndentLine.SetRange("Indent No.", QuoteComparision_Loc_1."Indent No.");
+                                        IF PostedIndentLine.FindSet() then begin
+                                            repeat
+                                                Clear(ErrorText01);
+                                                ErrorText01 := StrSubstNo('The %1 %2 of Indent %3 line no. %4 has not been selected for approval.',
+                                                Format(PostedIndentLine.Type), PostedIndentLine."No.", PostedIndentLine."Indent No.", PostedIndentLine."Line No");
 
-                                Rec.Status := Rec.Status::Open;
-                                Rec."Approver UserID" := '';
-                                Rec."Sender UserID" := '';
-                                Rec.Select := false;
-                                Rec."Sender UserID" := '';
-                                Rec."Send DateTime" := 0DT;
-                                Rec.Modify();
+                                                Clear(TotalPOQty_Var);
+                                                QuoteComparision_Loc.Reset();
+                                                QuoteComparision_Loc.SetCurrentKey(Status, Select, "Indent No.", "Indent Line No", Type, No);
+                                                QuoteComparision_Loc.SetRange(Status, QuoteComparision_Loc.Status::Open);
+                                                QuoteComparision_Loc.SetRange(Select, true);
+                                                QuoteComparision_Loc.SetRange("Indent No.", PostedIndentLine."Indent No.");
+                                                QuoteComparision_Loc.SetRange("Indent Line No", PostedIndentLine."Line No");
+                                                QuoteComparision_Loc.SetRange(Type, PostedIndentLine.Type);
+                                                QuoteComparision_Loc.SetRange(No, PostedIndentLine."No.");
+                                                IF QuoteComparision_Loc.FindSet() then begin
+                                                    repeat
+                                                        TotalPOQty_Var += QuoteComparision_Loc."PO Qty.";
+                                                    until QuoteComparision_Loc.Next() = 0;
+                                                    IF PostedIndentLine."Approved Qty" <> TotalPOQty_Var then begin
+                                                        ErrorText02 := StrSubstNo(' %1 %2 Indent No. %3 Line No. %4 Total of PO Qty must be equal to Indent Approved Qty.',
+                                                        PostedIndentLine.Type, PostedIndentLine."No.", PostedIndentLine."Indent No.", PostedIndentLine."Line No");
+                                                        Error(ErrorText02);
+                                                    end;
+                                                end else begin
+                                                    Error(ErrorText01);
+                                                end;
+                                            until PostedIndentLine.Next() = 0;
+                                        end;
+                                    end;
 
-                            until Rec.Next() = 0;
+                                until QuoteComparision_Loc_1.Next() = 0;
+                            end;
 
-                            Rec.Reset();
-                            Rec.SetFilter(Status, '%1|%2|%3', Rec.Status::Open, Rec.Status::"Pending Approval", Rec.Status::Rejected);
+                            QuoteComparision_Loc_1.Reset();
+                            QuoteComparision_Loc_1.SetCurrentKey(Status, Select);
+                            QuoteComparision_Loc_1.SetRange(Status, QuoteComparision_Loc_1.Status::Open);
+                            QuoteComparision_Loc_1.SetRange(Select, true);
+                            if QuoteComparision_Loc_1.FindFirst() then begin
+                                //>>Mail Header
+                                Clear(MailUserIdVar);
+                                Clear(BccMailIdList);
+                                Clear(CCMailIdList);
+                                MailUserid := UserId;
+                                VarUserSetup.Reset();
+                                VarUserSetup.SetRange("User ID", UserId);
+                                if VarUserSetup.FindFirst() then
+                                    UserEmail := VarUserSetup."E-Mail";
+
+                                VarUserSetup.TestField("Quote Comp. Approver ID");
+                                VarapproverSetup.Reset();
+                                VarapproverSetup.SetRange("User ID", VarUserSetup."Quote Comp. Approver ID");
+                                if VarapproverSetup.FindFirst() then begin
+                                    approveremail := VarapproverSetup."E-Mail";
+                                    MailUserIdVar.Add(approveremail);
+                                end;
+
+                                MailComapnyName := CompanyName;
+                                MailSubject := 'Quote Comparision for date ' + Format(Today()) + ' ' + CompanyName;
+
+                                BodyTxt := 'Dear Sir/Madam,';
+                                BodyTxt += '<br></br>';
+                                BodyTxt := 'Please find the below Quote Comparision for approval:';
+                                BodyTxt += '<br></br>';
+                                BodyTxt += '<TABLE border = "2">';
+                                BodyTxt += '<TH>Indent No.</TH>';
+                                BodyTxt += '<TH>Indent Line No.</TH>';
+                                BodyTxt += '<TH>Type</TH>';
+                                BodyTxt += '<TH>Description</TH>';
+                                BodyTxt += '<TH>Vendor Name</TH>';
+                                BodyTxt += '<TH>Quantity</TH>';
+                                BodyTxt += '<TH>Unit Cost</TH>';
+                                BodyTxt += '<TH>Actual PO Qty.</TH>';
+                                BodyTxt += '<TH>Actual PO Cost</TH>';
+                                BodyTxt += '<TH>Entry No.</TH>';
+                                BodyTxt += '<TH>Priority</TH>';
+                                BodyTxt += '<TH>Status</TH>';
+                                BodyTxt += '<TH>Remarks</TH>';
+                                BodyTxt += '</TR>';
+                                //<<Mail Header
+                                repeat
+                                    Clear(QuoteComparision_Loc_2);
+                                    QuoteComparision_Loc_2.Reset();
+                                    QuoteComparision_Loc_2.SetCurrentKey(Status, Select, "Indent No.", "Indent Line No", Type, No);
+                                    QuoteComparision_Loc_2.SetRange(Status, QuoteComparision_Loc_2.Status::Open);
+                                    QuoteComparision_Loc_2.SetRange(Select, false);
+                                    IF (QuoteComparision_Loc_1."Indent No." <> '') then begin
+                                        QuoteComparision_Loc_2.SetRange("Indent No.", QuoteComparision_Loc_1."Indent No.");
+                                    end else begin
+                                        QuoteComparision_Loc_2.SetFilter("Indent No.", '');
+                                        QuoteComparision_Loc_2.SetRange(Type, QuoteComparision_Loc_1.Type);
+                                        QuoteComparision_Loc_2.SetRange(No, QuoteComparision_Loc_1.No);
+                                    end;
+                                    IF QuoteComparision_Loc_2.FindFirst() then begin
+                                        repeat
+                                            QuoteComparision_Loc_2.Status := QuoteComparision_Loc_2.Status::"Not Qualified";
+                                            QuoteComparision_Loc_2.Pending := true;
+                                            QuoteComparision_Loc_2.Modify();
+                                        until QuoteComparision_Loc_2.Next() = 0;
+                                    end;
+
+                                    IF QuoteComparision_Loc.Get(QuoteComparision_Loc_1."Entry No.") then begin
+                                        ApprovalEntryIndent.Init;
+                                        EntryNo += 1;
+                                        ApprovalEntryIndent."Entry No." := EntryNo;
+                                        ApprovalEntryIndent."Quote Comparison Entry No." := QuoteComparision_Loc."Entry No.";
+                                        ApprovalEntryIndent."Sender UserID" := UserId;
+                                        usersetup.Get(UserId);
+                                        usersetup.TestField("Quote Comp. Approver ID");
+                                        if usersetup1.get(usersetup."Quote Comp. Approver ID") then begin
+                                            if (Rec."PO Qty." * Rec."Unit Cost") <= usersetup1."Quote Comp. Approval Limit" then
+                                                ApprovalEntryIndent."Approver UserID" := usersetup1."User ID"
+                                            else
+                                                ApprovalEntryIndent."Approver UserID" := usersetup1."Approver ID";
+                                        end;
+                                        ApprovalEntryIndent.Status := ApprovalEntryIndent.Status::"Sent for approval";
+                                        ApprovalEntryIndent."Sent for approval" := true;
+                                        ApprovalEntryIndent."Send DateTime" := CurrentDateTime;
+                                        ApprovalEntryIndent.Insert;
+
+                                        QuoteComparision_Loc.Status := QuoteComparision_Loc.Status::"Pending Approval";
+                                        QuoteComparision_Loc."Approver UserID" := ApprovalEntryIndent."Approver UserID";
+                                        QuoteComparision_Loc.Select := false;
+                                        QuoteComparision_Loc.Pending := true;
+                                        QuoteComparision_Loc."Sender UserID" := UserId;
+                                        QuoteComparision_Loc."Send DateTime" := CurrentDateTime;
+                                        QuoteComparision_Loc.Modify();
+
+                                        //>Mail Body
+                                        BodyTxt += '<TR>';
+                                        BodyTxt += '<TD>' + Format(QuoteComparision_Loc."Indent No.") + '</TD>';
+                                        BodyTxt += '<TD>' + Format(QuoteComparision_Loc."Indent Line No") + '</TD>';
+                                        BodyTxt += '<TD>' + Format(QuoteComparision_Loc.Type) + '</TD>';
+                                        BodyTxt += '<TD>' + Format(QuoteComparision_Loc.Description) + '</TD>';
+                                        BodyTxt += '<TD>' + Format(QuoteComparision_Loc."Vendor Name") + '</TD>';
+                                        BodyTxt += '<TD>' + Format(QuoteComparision_Loc."Indent Approved Quantity") + '</TD>';
+                                        BodyTxt += '<TD>' + Format(QuoteComparision_Loc."Unit Cost") + '</TD>';
+                                        BodyTxt += '<TD>' + Format(QuoteComparision_Loc."PO Qty.") + '</TD>';
+                                        BodyTxt += '<TD>' + format(Round(QuoteComparision_Loc."Total PO Qty. Cost", 0.01, '=')) + '</TD>';
+                                        BodyTxt += '<TD>' + Format(QuoteComparision_Loc."Entry No.") + '</TD>';
+                                        BodyTxt += '<TD>' + Format(QuoteComparision_Loc."Priority No.") + '</TD>';
+                                        BodyTxt += '<TD>' + format(QuoteComparision_Loc.Status) + '</TD>';
+                                        BodyTxt += '<TD>' + QuoteComparision_Loc.Remarks + '</TD>';
+                                        BodyTxt += '</TR>';
+                                        //<<Mail Body
+                                    end;
+                                until QuoteComparision_Loc_1.Next() = 0;
+                                //>>Mail Footer
+                                BodyTxt += '</table>';
+                                BodyTxt += '<br></br>';
+                                BodyTxt += 'Regards';
+                                BodyTxt += '<br></br>';
+                                BodyTxt += MailUserid;
+                                BodyTxt += '<br></br>';
+                                CompInfo.get();
+                                BodyTxt += CompInfo.Name;
+
+                                EmailMsg.Create(MailUserIdVar, MailSubject, BodyTxt, true, CCMailIdList, BccMailIdList);
+                                EmailObj.Send(EmailMsg, Enum::"Email Scenario"::Default);
+                                //<<Mail Footer
+
+                                Message('Quote Comparison Entries has been sent for approval successfully.');
+                            end else
+                                Message('There are no lines are selected');
+
+                            Commit();
+                            Clear(QuoteComparision_Loc);
+                            QuoteComparision_Loc.Reset();
+                            QuoteComparision_Loc.SetRange(Status, QuoteComparision_Loc.Status::"Not Qualified");
+                            QuoteComparision_Loc.SetRange(Pending, true);
+                            IF QuoteComparision_Loc.FindSet() then begin
+                                repeat
+                                    IF (QuoteComparision_Loc."Indent No." <> '') then begin
+                                        QuoteComparision_Loc_1.Reset();
+                                        QuoteComparision_Loc_1.SetRange(Status, QuoteComparision_Loc_1.Status::Open);
+                                        QuoteComparision_Loc_1.SetRange("Indent No.", QuoteComparision_Loc."Indent No.");
+                                        if QuoteComparision_Loc_1.FindSet() then
+                                            repeat
+                                                QuoteComparision_Loc_1.Status := QuoteComparision_Loc_1.Status::"Not Qualified";
+                                                QuoteComparision_Loc_1.Pending := true;
+                                                QuoteComparision_Loc_1.Modify();
+                                            until QuoteComparision_Loc_1.Next() = 0;
+
+                                    end;
+                                until QuoteComparision_Loc.Next() = 0;
+                            end;
                             CurrPage.Update();
-                        end else
-                            Message('There are no lines selected for cancel - pending Approval Lines');
-                    end;
-                }
-            }
+                        end;
+                    }
+                    action("Pending for Approvals")
+                    {
+                        Promoted = true;
+                        PromotedIsBig = true;
+                        PromotedCategory = Process;
+                        ApplicationArea = all;
+                        trigger OnAction()
+                        var
+                            EntryNo: Integer;
+                            QuoteComparison_Loc: Record "Quote Comparison";
+                            QuoteComparison_Loc1: Record "Quote Comparison";
+                            PendingApprovalQuoteComparison_Page: page "Pending Appr. Quote Comparison";
+                        begin
+                            QuoteComparison_Loc1.Reset();
+                            IF QuoteComparison_Loc1.FindLast() then
+                                EntryNo := QuoteComparison_Loc1."Entry No.";
 
-            group("Copy Lines & History")
-            {
-                Action("Copy from Approved Entries")
-                {
-                    Promoted = true;
-                    PromotedIsBig = true;
-                    PromotedCategory = New;
-                    ApplicationArea = all;
+                            Clear(QuoteComparison_Loc1);
+                            QuoteComparison_Loc.Reset();
+                            QuoteComparison_Loc.SetFilter(Status, '%1|%2', QuoteComparison_Loc.Status::"Pending Approval", QuoteComparison_Loc.Status::"Not Qualified");
+                            QuoteComparison_Loc.SetRange(Pending, true);
+                            IF QuoteComparison_Loc.FindSet() then begin
+                                PendingApprovalQuoteComparison_Page.SetTableView(QuoteComparison_Loc);
+                                PendingApprovalQuoteComparison_Page.LookupMode(true);
+                                IF (PendingApprovalQuoteComparison_Page.RunModal() = Action::LookupOK) then begin
 
-                    trigger OnAction()
-                    var
-                        EntryNo: Integer;
-                        QuoteComparison_Loc: Record "Quote Comparison";
-                        QuoteComparison_Loc1: Record "Quote Comparison";
-                        ApprovedQuoteComparison_Page: page "Approved Quote Comparison";
-                    begin
-                        QuoteComparison_Loc1.Reset();
-                        IF QuoteComparison_Loc1.FindLast() then
-                            EntryNo := QuoteComparison_Loc1."Entry No.";
-
-                        Clear(QuoteComparison_Loc1);
-                        QuoteComparison_Loc.Reset();
-                        QuoteComparison_Loc.SetRange(Status, QuoteComparison_Loc.Status::Approved);
-                        IF QuoteComparison_Loc.FindSet() then begin
-                            ApprovedQuoteComparison_Page.SetTableView(QuoteComparison_Loc);
-                            ApprovedQuoteComparison_Page.LookupMode(true);
-                            IF (ApprovedQuoteComparison_Page.RunModal() = Action::LookupOK) then begin
-                                ApprovedQuoteComparison_Page.SetSelectionFilter(QuoteComparison_Loc);
-                                IF QuoteComparison_Loc.FindSet() then begin
-                                    repeat
-                                        QuoteComparison_Loc1.Init();
-                                        EntryNo += 1;
-                                        QuoteComparison_Loc1."Entry No." := EntryNo;
-                                        QuoteComparison_Loc1.Type := QuoteComparison_Loc.Type;
-                                        QuoteComparison_Loc1.Validate(No, QuoteComparison_Loc.No);
-                                        QuoteComparison_Loc1.Validate("Vendor Code", QuoteComparison_Loc."Vendor Code");
-                                        QuoteComparison_Loc1."Unit Cost" := QuoteComparison_Loc."Unit Cost";
-                                        QuoteComparison_Loc1.Freight := QuoteComparison_Loc.Freight;
-                                        QuoteComparison_Loc1."Payment Term" := QuoteComparison_Loc."Payment Term";
-                                        QuoteComparison_Loc1."Delivery Days" := QuoteComparison_Loc."Delivery Days";
-                                        QuoteComparison_Loc1.Status := QuoteComparison_Loc1.Status::Open;
-                                        QuoteComparison_Loc1.Insert();
-
-                                    until QuoteComparison_Loc.Next() = 0;
-                                    Message('Quote Comparison Lines has been created from Approved Quote Comparison Lines');
-                                    Rec.Reset();
-                                    Rec.SetFilter(Status, '%1|%2|%3', Rec.Status::Open, Rec.Status::"Pending Approval", Rec.Status::Rejected);
-                                    CurrPage.Update();
                                 end;
-                            end;
-                        end else
-                            Message('There are no Approved Quote Comparison Lines');
-                    end;
-                }
-                Action("Copy from PO Created Entries")
-                {
-                    Promoted = true;
-                    PromotedIsBig = true;
-                    PromotedCategory = New;
-                    ApplicationArea = all;
+                            end else
+                                Message('There are no Pending Approval Quote Comparison Lines');
+                        end;
+                    }
 
-                    trigger OnAction()
-                    var
-                        EntryNo: Integer;
-                        QuoteComparison_Loc: Record "Quote Comparison";
-                        QuoteComparison_Loc1: Record "Quote Comparison";
-                        POCreatedQuoteComparison_Page: page "PO Created Quote Comparison";
-                    begin
-                        QuoteComparison_Loc1.Reset();
-                        IF QuoteComparison_Loc1.FindLast() then
-                            EntryNo := QuoteComparison_Loc1."Entry No.";
-                        Clear(QuoteComparison_Loc1);
+                    group("Copy Lines & History")
+                    {
+                        Action("Copy from Cancelled Entries")
+                        {
+                            Promoted = true;
+                            PromotedIsBig = true;
+                            PromotedCategory = New;
+                            ApplicationArea = all;
 
-                        QuoteComparison_Loc.Reset();
-                        QuoteComparison_Loc.SetRange(Status, QuoteComparison_Loc.Status::"PO Created");
-                        IF QuoteComparison_Loc.FindSet() then begin
-                            POCreatedQuoteComparison_Page.SetTableView(QuoteComparison_Loc);
-                            POCreatedQuoteComparison_Page.LookupMode(true);
-                            IF (POCreatedQuoteComparison_Page.RunModal() = Action::LookupOK) then begin
-                                POCreatedQuoteComparison_Page.SetSelectionFilter(QuoteComparison_Loc);
+                            trigger OnAction()
+                            var
+                                EntryNo: Integer;
+                                QuoteComparison_Loc: Record "Quote Comparison";
+                                QuoteComparison_Loc1: Record "Quote Comparison";
+                                ApprovedQuoteComparison_Page: page "Cancelled Quote Comparison";
+                            begin
+                                QuoteComparison_Loc1.Reset();
+                                IF QuoteComparison_Loc1.FindLast() then
+                                    EntryNo := QuoteComparison_Loc1."Entry No.";
+
+                                Clear(QuoteComparison_Loc1);
+                                QuoteComparison_Loc.Reset();
+                                QuoteComparison_Loc.SetRange(Status, QuoteComparison_Loc.Status::Cancelled);
                                 IF QuoteComparison_Loc.FindSet() then begin
-                                    repeat
-                                        QuoteComparison_Loc1.Init();
-                                        EntryNo += 1;
-                                        QuoteComparison_Loc1."Entry No." := EntryNo;
-                                        QuoteComparison_Loc1.Type := QuoteComparison_Loc.Type;
-                                        QuoteComparison_Loc1.Validate(No, QuoteComparison_Loc.No);
-                                        QuoteComparison_Loc1.Validate("Vendor Code", QuoteComparison_Loc."Vendor Code");
-                                        QuoteComparison_Loc1."Unit Cost" := QuoteComparison_Loc."Unit Cost";
-                                        QuoteComparison_Loc1.Freight := QuoteComparison_Loc.Freight;
-                                        QuoteComparison_Loc1."Payment Term" := QuoteComparison_Loc."Payment Term";
-                                        QuoteComparison_Loc1."Delivery Days" := QuoteComparison_Loc."Delivery Days";
-                                        QuoteComparison_Loc1.Status := QuoteComparison_Loc1.Status::Open;
-                                        QuoteComparison_Loc1.Insert();
+                                    ApprovedQuoteComparison_Page.SetTableView(QuoteComparison_Loc);
+                                    ApprovedQuoteComparison_Page.LookupMode(true);
+                                    IF (ApprovedQuoteComparison_Page.RunModal() = Action::LookupOK) then begin
+                                        ApprovedQuoteComparison_Page.SetSelectionFilter(QuoteComparison_Loc);
+                                        IF QuoteComparison_Loc.FindSet() then begin
+                                            repeat
+                                                QuoteComparison_Loc1.Init();
+                                                EntryNo += 1;
+                                                QuoteComparison_Loc1."Entry No." := EntryNo;
+                                                QuoteComparison_Loc1.Type := QuoteComparison_Loc.Type;
+                                                QuoteComparison_Loc1.Validate(No, QuoteComparison_Loc.No);
+                                                QuoteComparison_Loc1.Validate("Vendor Code", QuoteComparison_Loc."Vendor Code");
+                                                QuoteComparison_Loc1."Unit Cost" := QuoteComparison_Loc."Unit Cost";
+                                                QuoteComparison_Loc1.Freight := QuoteComparison_Loc.Freight;
+                                                QuoteComparison_Loc1."Payment Term" := QuoteComparison_Loc."Payment Term";
+                                                QuoteComparison_Loc1."Delivery Days" := QuoteComparison_Loc."Delivery Days";
+                                                QuoteComparison_Loc1.Status := QuoteComparison_Loc1.Status::Open;
+                                                QuoteComparison_Loc1.Insert();
 
-                                    until QuoteComparison_Loc.Next() = 0;
-                                    Message('Quote Comparison Lines has been created from PO created Quote Comparison Lines');
-                                    Rec.Reset();
-                                    Rec.SetFilter(Status, '%1|%2|%3', Rec.Status::Open, Rec.Status::"Pending Approval", Rec.Status::Rejected);
-                                    CurrPage.Update(true);
-                                end;
+                                            until QuoteComparison_Loc.Next() = 0;
+                                            Message('Quote Comparison Lines has been created from Cancelled Quote Comparison Lines');
+                                            CurrPage.Update();
+                                        end;
+                                    end;
+                                end else
+                                    Message('There are no Cancelled Quote Comparison Lines');
                             end;
-                        end else
-                            Message('There are no PO Created Quote Comparison Lines');
-                    end;
-                }
-                Action("Copy from Not Qualified Entries")
-                {
-                    Promoted = true;
-                    PromotedIsBig = true;
-                    PromotedCategory = New;
-                    ApplicationArea = all;
+                        }
+                        Action("Copy from Rejected Entries")
+                        {
+                            Promoted = true;
+                            PromotedIsBig = true;
+                            PromotedCategory = New;
+                            ApplicationArea = all;
 
-                    trigger OnAction()
-                    var
-                        EntryNo: Integer;
-                        QuoteComparison_Loc: Record "Quote Comparison";
-                        QuoteComparison_Loc1: Record "Quote Comparison";
-                        POCreatedQuoteComparison_Page: page "Not Qualified Quote Comparison";
-                    begin
-                        QuoteComparison_Loc1.Reset();
-                        IF QuoteComparison_Loc1.FindLast() then
-                            EntryNo := QuoteComparison_Loc1."Entry No.";
-                        Clear(QuoteComparison_Loc1);
+                            trigger OnAction()
+                            var
+                                EntryNo: Integer;
+                                QuoteComparison_Loc: Record "Quote Comparison";
+                                QuoteComparison_Loc1: Record "Quote Comparison";
+                                ApprovedQuoteComparison_Page: page "Rejected Quote Comparison";
+                            begin
+                                QuoteComparison_Loc1.Reset();
+                                IF QuoteComparison_Loc1.FindLast() then
+                                    EntryNo := QuoteComparison_Loc1."Entry No.";
 
-                        QuoteComparison_Loc.Reset();
-                        QuoteComparison_Loc.SetRange(Status, QuoteComparison_Loc.Status::"Not Qualified");
-                        IF QuoteComparison_Loc.FindSet() then begin
-                            POCreatedQuoteComparison_Page.SetTableView(QuoteComparison_Loc);
-                            POCreatedQuoteComparison_Page.LookupMode(true);
-                            IF (POCreatedQuoteComparison_Page.RunModal() = Action::LookupOK) then begin
-                                POCreatedQuoteComparison_Page.SetSelectionFilter(QuoteComparison_Loc);
+                                Clear(QuoteComparison_Loc1);
+                                QuoteComparison_Loc.Reset();
+                                QuoteComparison_Loc.SetRange(Status, QuoteComparison_Loc.Status::Rejected);
                                 IF QuoteComparison_Loc.FindSet() then begin
-                                    repeat
-                                        QuoteComparison_Loc1.Init();
-                                        EntryNo += 1;
-                                        QuoteComparison_Loc1."Entry No." := EntryNo;
-                                        QuoteComparison_Loc1.Type := QuoteComparison_Loc.Type;
-                                        QuoteComparison_Loc1.Validate(No, QuoteComparison_Loc.No);
-                                        QuoteComparison_Loc1.Validate("Vendor Code", QuoteComparison_Loc."Vendor Code");
-                                        QuoteComparison_Loc1."Unit Cost" := QuoteComparison_Loc."Unit Cost";
-                                        QuoteComparison_Loc1.Freight := QuoteComparison_Loc.Freight;
-                                        QuoteComparison_Loc1."Payment Term" := QuoteComparison_Loc."Payment Term";
-                                        QuoteComparison_Loc1."Delivery Days" := QuoteComparison_Loc."Delivery Days";
-                                        QuoteComparison_Loc1.Status := QuoteComparison_Loc1.Status::Open;
-                                        QuoteComparison_Loc1.Insert();
+                                    ApprovedQuoteComparison_Page.SetTableView(QuoteComparison_Loc);
+                                    ApprovedQuoteComparison_Page.LookupMode(true);
+                                    IF (ApprovedQuoteComparison_Page.RunModal() = Action::LookupOK) then begin
+                                        ApprovedQuoteComparison_Page.SetSelectionFilter(QuoteComparison_Loc);
+                                        IF QuoteComparison_Loc.FindSet() then begin
+                                            repeat
+                                                QuoteComparison_Loc1.Init();
+                                                EntryNo += 1;
+                                                QuoteComparison_Loc1."Entry No." := EntryNo;
+                                                QuoteComparison_Loc1.Type := QuoteComparison_Loc.Type;
+                                                QuoteComparison_Loc1.Validate(No, QuoteComparison_Loc.No);
+                                                QuoteComparison_Loc1.Validate("Vendor Code", QuoteComparison_Loc."Vendor Code");
+                                                QuoteComparison_Loc1."Unit Cost" := QuoteComparison_Loc."Unit Cost";
+                                                QuoteComparison_Loc1.Freight := QuoteComparison_Loc.Freight;
+                                                QuoteComparison_Loc1."Payment Term" := QuoteComparison_Loc."Payment Term";
+                                                QuoteComparison_Loc1."Delivery Days" := QuoteComparison_Loc."Delivery Days";
+                                                QuoteComparison_Loc1.Status := QuoteComparison_Loc1.Status::Open;
+                                                QuoteComparison_Loc1.Insert();
 
-                                    until QuoteComparison_Loc.Next() = 0;
-                                    Message('Quote Comparison Lines has been created from not Qualified Quote Comparison Lines');
-                                    Rec.Reset();
-                                    Rec.SetFilter(Status, '%1|%2|%3', Rec.Status::Open, Rec.Status::"Pending Approval", Rec.Status::Rejected);
-                                    CurrPage.Update(true);
-                                end;
+                                            until QuoteComparison_Loc.Next() = 0;
+                                            Message('Quote Comparison Lines has been created from Rejected Quote Comparison Lines');
+                                            CurrPage.Update();
+                                        end;
+                                    end;
+                                end else
+                                    Message('There are no Rejected Quote Comparison Lines');
                             end;
-                        end else
-                            Message('There are no PO Created Quote Comparison Lines');
-                    end;
+                        }
+                        Action("Copy from Approved Entries")
+                        {
+                            Promoted = true;
+                            PromotedIsBig = true;
+                            PromotedCategory = New;
+                            ApplicationArea = all;
+
+                            trigger OnAction()
+                            var
+                                EntryNo: Integer;
+                                QuoteComparison_Loc: Record "Quote Comparison";
+                                QuoteComparison_Loc1: Record "Quote Comparison";
+                                ApprovedQuoteComparison_Page: page "Approved Quote Comparison";
+                            begin
+                                QuoteComparison_Loc1.Reset();
+                                IF QuoteComparison_Loc1.FindLast() then
+                                    EntryNo := QuoteComparison_Loc1."Entry No.";
+
+                                Clear(QuoteComparison_Loc1);
+                                QuoteComparison_Loc.Reset();
+                                QuoteComparison_Loc.SetRange(Status, QuoteComparison_Loc.Status::Approved);
+                                IF QuoteComparison_Loc.FindSet() then begin
+                                    ApprovedQuoteComparison_Page.SetTableView(QuoteComparison_Loc);
+                                    ApprovedQuoteComparison_Page.LookupMode(true);
+                                    IF (ApprovedQuoteComparison_Page.RunModal() = Action::LookupOK) then begin
+                                        ApprovedQuoteComparison_Page.SetSelectionFilter(QuoteComparison_Loc);
+                                        IF QuoteComparison_Loc.FindSet() then begin
+                                            repeat
+                                                QuoteComparison_Loc1.Init();
+                                                EntryNo += 1;
+                                                QuoteComparison_Loc1."Entry No." := EntryNo;
+                                                QuoteComparison_Loc1.Type := QuoteComparison_Loc.Type;
+                                                QuoteComparison_Loc1.Validate(No, QuoteComparison_Loc.No);
+                                                QuoteComparison_Loc1.Validate("Vendor Code", QuoteComparison_Loc."Vendor Code");
+                                                QuoteComparison_Loc1."Unit Cost" := QuoteComparison_Loc."Unit Cost";
+                                                QuoteComparison_Loc1.Freight := QuoteComparison_Loc.Freight;
+                                                QuoteComparison_Loc1."Payment Term" := QuoteComparison_Loc."Payment Term";
+                                                QuoteComparison_Loc1."Delivery Days" := QuoteComparison_Loc."Delivery Days";
+                                                QuoteComparison_Loc1.Status := QuoteComparison_Loc1.Status::Open;
+                                                QuoteComparison_Loc1.Insert();
+
+                                            until QuoteComparison_Loc.Next() = 0;
+                                            Message('Quote Comparison Lines has been created from Approved Quote Comparison Lines');
+                                            Rec.Reset();
+                                            Rec.SetFilter(Status, '%1|%2|%3', Rec.Status::Open, Rec.Status::"Pending Approval", Rec.Status::Rejected);
+                                            CurrPage.Update();
+                                        end;
+                                    end;
+                                end else
+                                    Message('There are no Approved Quote Comparison Lines');
+                            end;
+                        }
+                        Action("Copy from PO Created Entries")
+                        {
+                            Promoted = true;
+                            PromotedIsBig = true;
+                            PromotedCategory = New;
+                            ApplicationArea = all;
+
+                            trigger OnAction()
+                            var
+                                EntryNo: Integer;
+                                QuoteComparison_Loc: Record "Quote Comparison";
+                                QuoteComparison_Loc1: Record "Quote Comparison";
+                                POCreatedQuoteComparison_Page: page "PO Created Quote Comparison";
+                            begin
+                                QuoteComparison_Loc1.Reset();
+                                IF QuoteComparison_Loc1.FindLast() then
+                                    EntryNo := QuoteComparison_Loc1."Entry No.";
+                                Clear(QuoteComparison_Loc1);
+
+                                QuoteComparison_Loc.Reset();
+                                QuoteComparison_Loc.SetRange(Status, QuoteComparison_Loc.Status::"PO Created");
+                                IF QuoteComparison_Loc.FindSet() then begin
+                                    POCreatedQuoteComparison_Page.SetTableView(QuoteComparison_Loc);
+                                    POCreatedQuoteComparison_Page.LookupMode(true);
+                                    IF (POCreatedQuoteComparison_Page.RunModal() = Action::LookupOK) then begin
+                                        POCreatedQuoteComparison_Page.SetSelectionFilter(QuoteComparison_Loc);
+                                        IF QuoteComparison_Loc.FindSet() then begin
+                                            repeat
+                                                QuoteComparison_Loc1.Init();
+                                                EntryNo += 1;
+                                                QuoteComparison_Loc1."Entry No." := EntryNo;
+                                                QuoteComparison_Loc1.Type := QuoteComparison_Loc.Type;
+                                                QuoteComparison_Loc1.Validate(No, QuoteComparison_Loc.No);
+                                                QuoteComparison_Loc1.Validate("Vendor Code", QuoteComparison_Loc."Vendor Code");
+                                                QuoteComparison_Loc1."Unit Cost" := QuoteComparison_Loc."Unit Cost";
+                                                QuoteComparison_Loc1.Freight := QuoteComparison_Loc.Freight;
+                                                QuoteComparison_Loc1."Payment Term" := QuoteComparison_Loc."Payment Term";
+                                                QuoteComparison_Loc1."Delivery Days" := QuoteComparison_Loc."Delivery Days";
+                                                QuoteComparison_Loc1.Status := QuoteComparison_Loc1.Status::Open;
+                                                QuoteComparison_Loc1.Insert();
+
+                                            until QuoteComparison_Loc.Next() = 0;
+                                            Message('Quote Comparison Lines has been created from PO created Quote Comparison Lines');
+                                            Rec.Reset();
+                                            Rec.SetFilter(Status, '%1|%2|%3', Rec.Status::Open, Rec.Status::"Pending Approval", Rec.Status::Rejected);
+                                            CurrPage.Update(true);
+                                        end;
+                                    end;
+                                end else
+                                    Message('There are no PO Created Quote Comparison Lines');
+                            end;
+                        }
+                        Action("Copy from Not Qualified Entries")
+                        {
+                            Promoted = true;
+                            PromotedIsBig = true;
+                            PromotedCategory = New;
+                            ApplicationArea = all;
+
+                            trigger OnAction()
+                            var
+                                EntryNo: Integer;
+                                QuoteComparison_Loc: Record "Quote Comparison";
+                                QuoteComparison_Loc1: Record "Quote Comparison";
+                                POCreatedQuoteComparison_Page: page "Not Qualified Quote Comparison";
+                            begin
+                                QuoteComparison_Loc1.Reset();
+                                IF QuoteComparison_Loc1.FindLast() then
+                                    EntryNo := QuoteComparison_Loc1."Entry No.";
+                                Clear(QuoteComparison_Loc1);
+
+                                QuoteComparison_Loc.Reset();
+                                QuoteComparison_Loc.SetRange(Status, QuoteComparison_Loc.Status::"Not Qualified");
+                                IF QuoteComparison_Loc.FindSet() then begin
+                                    POCreatedQuoteComparison_Page.SetTableView(QuoteComparison_Loc);
+                                    POCreatedQuoteComparison_Page.LookupMode(true);
+                                    IF (POCreatedQuoteComparison_Page.RunModal() = Action::LookupOK) then begin
+                                        POCreatedQuoteComparison_Page.SetSelectionFilter(QuoteComparison_Loc);
+                                        IF QuoteComparison_Loc.FindSet() then begin
+                                            repeat
+                                                QuoteComparison_Loc1.Init();
+                                                EntryNo += 1;
+                                                QuoteComparison_Loc1."Entry No." := EntryNo;
+                                                QuoteComparison_Loc1.Type := QuoteComparison_Loc.Type;
+                                                QuoteComparison_Loc1.Validate(No, QuoteComparison_Loc.No);
+                                                QuoteComparison_Loc1.Validate("Vendor Code", QuoteComparison_Loc."Vendor Code");
+                                                QuoteComparison_Loc1."Unit Cost" := QuoteComparison_Loc."Unit Cost";
+                                                QuoteComparison_Loc1.Freight := QuoteComparison_Loc.Freight;
+                                                QuoteComparison_Loc1."Payment Term" := QuoteComparison_Loc."Payment Term";
+                                                QuoteComparison_Loc1."Delivery Days" := QuoteComparison_Loc."Delivery Days";
+                                                QuoteComparison_Loc1.Status := QuoteComparison_Loc1.Status::Open;
+                                                QuoteComparison_Loc1.Insert();
+
+                                            until QuoteComparison_Loc.Next() = 0;
+                                            Message('Quote Comparison Lines has been created from not Qualified Quote Comparison Lines');
+                                            Rec.Reset();
+                                            Rec.SetFilter(Status, '%1|%2|%3', Rec.Status::Open, Rec.Status::"Pending Approval", Rec.Status::Rejected);
+                                            CurrPage.Update(true);
+                                        end;
+                                    end;
+                                end else
+                                    Message('There are no PO Created Quote Comparison Lines');
+                            end;
+                        }
+                    }
                 }
             }
         }

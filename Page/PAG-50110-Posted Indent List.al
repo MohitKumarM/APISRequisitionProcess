@@ -74,12 +74,12 @@ page 50110 "Posted Indent List"
     }
     trigger OnOpenPage()
     begin
-        usersetup.Get(UserId);
-        IF usersetup."Department Code" <> '' THEN BEGIN
-            rec.FILTERGROUP(2);
-            rec.SETRANGE("Shortcut Dimension 4 Code", usersetup."Department Code");
-            rec.FILTERGROUP(0);
-        END;
+        // usersetup.Get(UserId);
+        // IF usersetup."Department Code" <> '' THEN BEGIN
+        //     rec.FILTERGROUP(2);
+        //     rec.SETRANGE("Shortcut Dimension 4 Code", usersetup."Department Code");
+        //     rec.FILTERGROUP(0);
+        // END;
 
     end;
 

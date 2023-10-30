@@ -82,7 +82,7 @@ table 50109 "Quote Comparison"
         field(9; "Unit Cost"; Decimal)
         {
             DataClassification = CustomerContent;
-            DecimalPlaces = 0 : 3;
+            DecimalPlaces = 0 : 2;
         }
         field(10; "Total Indent Qty. Cost"; Decimal)
         {
@@ -186,6 +186,10 @@ table 50109 "Quote Comparison"
         {
             DataClassification = CustomerContent;
         }
+        Field(34; Pending; Boolean)
+        {
+            DataClassification = CustomerContent;
+        }
 
 
 
@@ -196,6 +200,18 @@ table 50109 "Quote Comparison"
         key(Key1; "Entry No.")
         {
             Clustered = true;
+        }
+        key(Key2; Status, Select, "Indent No.", "Indent Line No", Type, No)
+        {
+
+        }
+        key(key3; Status, Select)
+        {
+
+        }
+        key(key4; "Indent No.", Type, No, "Unit Cost")
+        {
+
         }
     }
 

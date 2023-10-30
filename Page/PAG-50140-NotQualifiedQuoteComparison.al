@@ -4,7 +4,7 @@ page 50140 "Not Qualified Quote Comparison"
     Caption = 'Not Qualified Quote Comparison';
     PageType = List;
     SourceTable = "Quote Comparison";
-    SourceTableView = where(Status = filter("Not Qualified"));
+    SourceTableView = where(Status = filter("Not Qualified"), Pending = const(false));
     UsageCategory = History;
     InsertAllowed = false;
     DeleteAllowed = false;

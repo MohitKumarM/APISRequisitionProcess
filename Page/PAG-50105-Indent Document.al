@@ -214,10 +214,7 @@ page 50105 "Indent Document"
                             AppEntryIndentEntryno.Modify;
                         until AppEntryIndentEntryno.Next = 0;
                     Rec.Status := Rec.Status::Open;
-
-
-                    Rec.Status := Rec.Status::Open;
-
+                    Rec.Modify();
                 end;
             }
 

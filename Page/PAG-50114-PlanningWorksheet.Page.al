@@ -275,7 +275,6 @@ page 50114 "PM Planning Worksheet1"
         SalesLine_Rec: Record "Sales Line";
         Item_Rec: Record Item;
         Item_TempRec1: Record Item temporary;
-        // Rec: Record Item temporary;
         INvPostGrp_Rec: Record "Inventory Posting Group";
         ProdBomHeader_Rec: Record "Production BOM Header";
         ProdBomLine_Rec: Record "Production BOM Line";
@@ -289,8 +288,8 @@ page 50114 "PM Planning Worksheet1"
 
             IF Item_TempRec1.IsTemporary then
                 Item_TempRec1.DeleteAll();
-            // IF Rec.IsTemporary then
-            //     Rec.DeleteAll();
+
+            Commit();
 
             SalesLine_Rec.Reset();
             SalesLine_Rec.SetCurrentKey(Type, "No.");
