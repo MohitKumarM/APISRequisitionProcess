@@ -124,7 +124,7 @@ page 50112 "Posted Indent For PO"
                             PurchaseLine.Validate("Shortcut Dimension 2 Code", Rec."Shortcut Dimension 2 Code");
                             PurchaseLine.validate("Shortcut Dimension 4 Code", Rec."Shortcut Dimension 4 Code");
                             PurchaseLine.Validate(Quantity, rec."Approved Qty");
-                            PurchaseLine.Validate("Direct Unit Cost", Rec."Unit Price");
+                            // PurchaseLine.Validate("Direct Unit Cost", Rec."Unit Price");
                             PurchaseLine."Indent No." := Rec."Indent No.";
                             PurchaseLine."Indent Line No." := Rec."Line No";
                             PurchaseLine."Indent Line No." := Rec."Line No";

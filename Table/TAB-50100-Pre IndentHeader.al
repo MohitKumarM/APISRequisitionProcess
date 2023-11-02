@@ -159,10 +159,11 @@ table 50100 "Pre Indent Header"
         IF Rec.Status <> xRec.Status then begin
             IndentLine_Rec.Reset();
             IndentLine_Rec.SetRange("Indent No.", Rec."No.");
-            IF IndentLine_Rec.FindSet() then
+            IF IndentLine_Rec.FindSet() then begin
                 IndentLine_Rec.ModifyAll(Status, Rec.Status);
+                IndentLine_Rec.ModifyAll("Location Code", Rec."Location Code");
+            end;
         end;
-
     end;
 
     trigger OnDelete()

@@ -362,8 +362,6 @@ page 50114 "PM Planning Worksheet1"
                                                     Rec."Standard Cost" += PurchLine_Rec.Quantity - PurchLine_Rec."Quantity Received";
                                                 until PurchLine_Rec.Next() = 0;
                                             end;
-
-
                                             Rec."Rolled-up Material Cost" := Abs((Rec."Unit Price" - Rec."Unit Cost") + Rec."Standard Cost");
                                             Rec.Insert();
                                         end else begin

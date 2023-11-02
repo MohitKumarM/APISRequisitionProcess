@@ -162,6 +162,11 @@ table 50103 "Posted Indent Line"
             DataClassification = ToBeClassified;
             Editable = false;
         }
+        field(35; "Location Code"; Code[50])
+        {
+            DataClassification = ToBeClassified;
+            TableRelation = Location;
+        }
     }
 
     keys
@@ -178,6 +183,7 @@ table 50103 "Posted Indent Line"
     begin
         PostedIndentHeader_Loc.Get(Rec."Indent No.");
         Rec.Status := PostedIndentHeader_Loc.Status;
+
 
     end;
 

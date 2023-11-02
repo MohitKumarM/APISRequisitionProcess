@@ -194,6 +194,11 @@ table 50101 "Pre Indent Line"
             DataClassification = ToBeClassified;
             Editable = false;
         }
+        field(35; "Location Code"; Code[50])
+        {
+            DataClassification = ToBeClassified;
+            TableRelation = Location;
+        }
 
 
     }
@@ -222,8 +227,10 @@ table 50101 "Pre Indent Line"
     begin
         IndentHeader.Reset();
         IndentHeader.setrange("No.", Rec."Indent No.");
-        if IndentHeader.FindFirst then
+        if IndentHeader.FindFirst then begin
             IndentHeader.TestField(Status, IndentHeader.Status::Open);
+            Rec."Location Code" := IndentHeader."Location Code";
+        end;
 
 
 
