@@ -1,6 +1,6 @@
-table 50110 "Planning Item-Location Wise"
+table 50110 "PM Planning Item Wise"
 {
-    Caption = 'Planning Worksheet Item-Location Wise';
+    Caption = 'PM Planning Worksheet Item Wise';
     DataClassification = ToBeClassified;
 
     fields
@@ -12,86 +12,81 @@ table 50110 "Planning Item-Location Wise"
             trigger OnValidate()
             var
             begin
-
             end;
-
         }
         field(2; "Item Description"; Text[100])
         {
             DataClassification = ToBeClassified;
             Editable = false;
+        }
 
-        }
-        field(3; "Location Code"; Code[10])
-        {
-            DataClassification = ToBeClassified;
-            Editable = false;
-            TableRelation = Location;
-            trigger OnValidate()
-            var
-            begin
-
-            end;
-        }
-        field(4; "Location Description"; Text[100])
-        {
-            DataClassification = ToBeClassified;
-            Editable = false;
-        }
-        field(5; UOM; Code[10])
+        field(3; UOM; Code[10])
         {
             DataClassification = ToBeClassified;
             TableRelation = "Unit of Measure";
             ValidateTableRelation = false;
         }
-        field(6; "Item Category Code"; Code[20])
+        field(4; "Item Category Code"; Code[20])
         {
             Caption = 'Item Category Code';
             TableRelation = "Item Category";
         }
 
-        field(7; "Product Group Code"; Code[10])
+        field(5; "Product Group Code"; Code[10])
         {
             DataClassification = ToBeClassified;
             TableRelation = "New Product Group".Code where("Item Category Code" = field("Item Category Code"));
         }
-        field(8; "Inventory Posting Group"; Code[20])
+        field(6; "Inventory Posting Group"; Code[20])
         {
             DataClassification = ToBeClassified;
             Caption = 'Inventory Posting Group';
             TableRelation = "Inventory Posting Group";
         }
-        field(9; "Stock Qty."; Decimal)
+        field(7; "SO Qty"; Decimal)
         {
             AutoFormatType = 2;
             MinValue = 0;
             DataClassification = ToBeClassified;
         }
-        field(10; "Demand For SO"; Decimal)
+        field(8; Inventory; Decimal)
         {
             AutoFormatType = 2;
             MinValue = 0;
             DataClassification = ToBeClassified;
         }
-        field(11; "Pending PO Qty"; Decimal)
+        field(9; "Forecaste Qty."; Decimal)
         {
             DataClassification = ToBeClassified;
             AutoFormatType = 2;
             MinValue = 0;
         }
-        field(12; "Qty on Indent"; Decimal)
+        field(10; "Actaul Demand"; Decimal)
         {
             DataClassification = ToBeClassified;
             AutoFormatType = 2;
             MinValue = 0;
+        }
+        field(11; "Inventory on Prod. Location"; Decimal)
+        {
+            DataClassification = ToBeClassified;
+            AutoFormatType = 2;
+            MinValue = 0;
+        }
+        field(12; "Total Demand"; Decimal)
+        {
+            DataClassification = ToBeClassified;
+            AutoFormatType = 2;
+            MinValue = 0;
+        }
 
-        }
-        field(13; "Required Qty."; Decimal)
+        field(13; "Qty on Indent"; Decimal)
         {
             DataClassification = ToBeClassified;
             AutoFormatType = 2;
             MinValue = 0;
         }
+
         field(14; "Qty. for Indent"; Decimal)
         {
             DataClassification = ToBeClassified;
@@ -102,68 +97,19 @@ table 50110 "Planning Item-Location Wise"
         {
             DataClassification = ToBeClassified;
         }
-        field(16; "Forecaste Qty."; Decimal)
+        field(16; "Planning type"; option)
         {
-            DataClassification = ToBeClassified;
-            AutoFormatType = 2;
-            MinValue = 0;
+            OptionMembers = "FG-Honey","FG-Non Honey",PM,"RM-Honey","RM-NonHoney";
         }
-        field(17; "Total Required Qty."; Decimal)
+        field(17; "Actual inventory"; Decimal)
         {
             DataClassification = ToBeClassified;
-            AutoFormatType = 2;
-            MinValue = 0;
-        }
-        field(18; "Production Unit"; Boolean)
-        {
-            DataClassification = ToBeClassified;
-        }
-        field(19; "Actual Stock Qty."; Decimal)
-        {
-            AutoFormatType = 2;
-            MinValue = 0;
-            DataClassification = ToBeClassified;
-        }
-
-        field(21; "BOM"; Boolean)
-        {
-            DataClassification = ToBeClassified;
-        }
-        field(22; "Required Qty with Forcaste"; Decimal)
-        {
-            DataClassification = ToBeClassified;
-            AutoFormatType = 2;
-            MinValue = 0;
-        }
-        field(23; "Required Qty for FG Item"; Decimal)
-        {
-            DataClassification = ToBeClassified;
-            AutoFormatType = 2;
-            MinValue = 0;
-        }
-        field(24; "Available Stock at Prod."; Decimal)
-        {
-            DataClassification = ToBeClassified;
-            AutoFormatType = 2;
-            MinValue = 0;
-        }
-        field(25; "Assign Qty from Prod."; Decimal)
-        {
-            DataClassification = ToBeClassified;
-            AutoFormatType = 2;
-            MinValue = 0;
-        }
-        field(26; "Outstanding Stock at Prod."; Decimal)
-        {
-            DataClassification = ToBeClassified;
-            AutoFormatType = 2;
-            MinValue = 0;
         }
     }
 
     keys
     {
-        key(Key1; "Item Code", "Location Code")
+        key(Key1; "Item Code")
         {
             Clustered = true;
         }

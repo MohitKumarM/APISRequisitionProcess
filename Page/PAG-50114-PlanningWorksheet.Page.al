@@ -8,13 +8,13 @@
 //<<-----------------------------------------------------
 
 
-page 50114 "PM Planning Worksheet1"
+page 50114 "OLD PM Planning Worksheet1"
 {
     PageType = List;
     ApplicationArea = All;
     UsageCategory = Administration;
     SourceTable = Item;
-    Caption = 'PM Planning Worksheet';
+    Caption = 'OLD PM Planning Worksheet';
     SourceTableTemporary = true;
     InsertAllowed = false;
     DeleteAllowed = false;

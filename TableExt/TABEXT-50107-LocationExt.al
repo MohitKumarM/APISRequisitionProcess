@@ -6,6 +6,10 @@ tableextension 50107 LocationExtension extends Location
         {
             DataClassification = ToBeClassified;
         }
+        field(50102; "Reject Unit"; Boolean)
+        {
+            DataClassification = ToBeClassified;
+        }
     }
 
     keys

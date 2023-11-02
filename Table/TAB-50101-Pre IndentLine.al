@@ -92,12 +92,27 @@ table 50101 "Pre Indent Line"
         {
             DataClassification = CustomerContent;
         }
-        field(10; "HSN/SAC Code"; Code[20])
+         field(10; "Purchase Created"; Boolean)
         {
             DataClassification = CustomerContent;
         }
-
-        field(11; "Approved Qty"; Decimal)
+        field(11; "PO No"; Code[20])
+        {
+            DataClassification = CustomerContent;
+        }
+         field(12; "PO Line No"; Integer)
+        {
+            DataClassification = CustomerContent;
+        }
+        field(13; "MRN No"; Code[20])
+        {
+            DataClassification = CustomerContent;
+        }
+        field(14; "MRN Line No"; Integer)
+        {
+            DataClassification = CustomerContent;
+        }
+        field(15; "Approved Qty"; Decimal)
         {
             DataClassification = CustomerContent;
             trigger OnValidate()
@@ -106,7 +121,12 @@ table 50101 "Pre Indent Line"
                     Error('Approved Quantity must be less than quantity');
             end;
         }
-        field(12; "Unit Price"; Decimal)
+
+        field(16; "HSN/SAC Code"; Code[20])
+        {
+            DataClassification = CustomerContent;
+        }
+        field(17; "Unit Price"; Decimal)
         {
             DataClassification = CustomerContent;
             trigger OnValidate()
@@ -114,15 +134,15 @@ table 50101 "Pre Indent Line"
                 Amount := "Unit Price" * Quantity;
             end;
         }
-        field(13; "Full Description"; Text[200])
+        field(18; "Full Description"; Text[200])
         {
             DataClassification = ToBeClassified;
         }
-        field(14; Amount; Decimal)
+        field(19; Amount; Decimal)
         {
             DataClassification = ToBeClassified;
         }
-        field(15; Reamrk; text[200])
+        field(20; Reamrk; text[200])
         {
             DataClassification = ToBeClassified;
         }
@@ -161,6 +181,7 @@ table 50101 "Pre Indent Line"
             DataClassification = CustomerContent;
             TableRelation = if (type = filter(Item), "PM Item Type" = Filter(Label)) "Substrate-Paper Quality Master".Code where(Type = filter(Substrate));
         }
+       
         field(31; "PM Item Type"; Option)
         {
             OptionMembers = Blank,Bottle,Cap,Label,Carton,Pouch;

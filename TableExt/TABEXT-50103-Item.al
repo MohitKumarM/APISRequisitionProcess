@@ -18,6 +18,10 @@ tableextension 50103 Item extends Item
         {
             DataClassification = ToBeClassified;
         }
+        field(50020; "Planning type"; option)
+        {
+            OptionMembers = "FG-Honey","FG-Non Honey",PM,"RM-Honey","RM-NonHoney";
+        }
     }
 
     var

@@ -8,6 +8,11 @@ pageextension 50109 LocationExtension extends "Location Card"
             {
                 ApplicationArea = all;
             }
+            field("Reject Unit"; Rec."Reject Unit")
+            {
+                ApplicationArea = all;
+            }
+
         }
     }
 
