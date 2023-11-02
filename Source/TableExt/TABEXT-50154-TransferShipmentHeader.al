@@ -45,7 +45,4 @@ tableextension 50154 EInvTransferShipmentHeader extends "Transfer Shipment Heade
             DataClassification = ToBeClassified;
         }
     }
-
-    var
-        myInt: Integer;
 }

@@ -1091,7 +1091,6 @@ codeunit 50150 "E-Invoice Generation"
                         Message(Format(ErrorMessage));
                     end;
 
-
             if JResultObject.Get('Data', JResultToken) then
                 if JResultToken.IsObject then begin
                     JResultToken.WriteTo(OutputMessage);
@@ -1382,7 +1381,6 @@ codeunit 50150 "E-Invoice Generation"
                         Message(Format(ErrorMessage));
                     end;
 
-
             if JResultObject.Get('Data', JResultToken) then
                 if JResultToken.IsObject then begin
                     JResultToken.WriteTo(OutputMessage);
@@ -1449,7 +1447,6 @@ codeunit 50150 "E-Invoice Generation"
                                 E_InvoiceLog."Irn Cancel Date Time" := CancelDateTime;
                             end else
                                 E_InvoiceLog."IRN Status" := E_InvoiceLog."IRN Status"::"Cancel Failed";
-
 
                             E_InvoiceLog."Current Date Time" := CurrentDateTime;
                             CLEAR(RequestResponse);
@@ -1530,7 +1527,6 @@ codeunit 50150 "E-Invoice Generation"
                         Cncl_IRNPayload.Add('CancelReason', (GetCancelReasonSaleInvHeader(Cncl_SalesInvoiceHeader)));
                         Cncl_IRNPayload.Add('CancelRemarks', Format(Cncl_SalesInvoiceHeader."Cancel Remarks"));
                         Cncl_IRNPayload.WriteTo(CnclBody);
-
                     end;
                 end;
             DocumentType::"Credit Memo":
@@ -1544,7 +1540,6 @@ codeunit 50150 "E-Invoice Generation"
                         Cncl_IRNPayload.Add('CancelReason', (GetCancelReasonSalesCrMemoHeader(Cncl_SalesCrMemoHeader)));
                         Cncl_IRNPayload.Add('CancelRemarks', Format(Cncl_SalesCrMemoHeader."Cancel Remarks"));
                         Cncl_IRNPayload.WriteTo(CnclBody);
-
                     end;
                 end;
             DocumentType::"Transfer Shipment":
@@ -1558,7 +1553,6 @@ codeunit 50150 "E-Invoice Generation"
                         Cncl_IRNPayload.Add('CancelReason', (GetCancelReasonTrnsShpemntHeader(Cncl_TransferShipment)));
                         Cncl_IRNPayload.Add('CancelRemarks', Format(Cncl_TransferShipment."Cancel Remarks"));
                         Cncl_IRNPayload.WriteTo(CnclBody);
-
                     end;
                 end;
         end;
@@ -1661,6 +1655,4 @@ codeunit 50150 "E-Invoice Generation"
     begin
         exit(Round(Amt, 0.01, '='))
     end;
-
-
 }

@@ -7,7 +7,4 @@ tableextension 50151 EInvUnitOfMeasure extends "Unit of Measure"
             DataClassification = ToBeClassified;
         }
     }
-
-    var
-        myInt: Integer;
 }

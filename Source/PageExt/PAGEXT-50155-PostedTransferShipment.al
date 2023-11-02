@@ -2,7 +2,6 @@ pageextension 50155 EInvPostedTransferShipment extends "Posted Transfer Shipment
 {
     layout
     {
-
         modify("Transport Method")
         {
             Editable = true;
@@ -67,7 +66,6 @@ pageextension 50155 EInvPostedTransferShipment extends "Posted Transfer Shipment
                     ApplicationArea = all;
                     Editable = false;
                 }
-
             }
         }
     }
@@ -112,7 +110,6 @@ pageextension 50155 EInvPostedTransferShipment extends "Posted Transfer Shipment
                     RunObject = page "E-Invoice Log";
                     RunPageLink = "Document Type" = filter('Invoice'),
                     "No." = field("No.");
-
                 }
                 action("Cancel Irn")
                 {
@@ -166,12 +163,7 @@ pageextension 50155 EInvPostedTransferShipment extends "Posted Transfer Shipment
                         end
                     end;
                 }
-
             }
-
         }
     }
-
-    var
-        myInt: Integer;
 }

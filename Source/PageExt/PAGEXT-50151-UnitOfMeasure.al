@@ -15,7 +15,4 @@ pageextension 50151 EInvUnitOfMeasure extends "Units of Measure"
     {
         // Add changes to page actions here
     }
-
-    var
-        myInt: Integer;
 }

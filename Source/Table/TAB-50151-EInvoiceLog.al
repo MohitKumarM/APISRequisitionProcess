@@ -104,9 +104,7 @@ table 50102 E_Invoice_Log
         {
             Subtype = Bitmap;
             DataClassification = ToBeClassified;
-
         }
-
     }
 
     keys
@@ -236,7 +234,4 @@ table 50102 E_Invoice_Log
             Content += LineSeparator + ContentLine;
         END;
     end;
-
-
-
 }

@@ -19,7 +19,4 @@ pageextension 50156 GSTRegsitrationNo extends "GST Registration Nos."
     {
         // Add changes to page actions here
     }
-
-    var
-        myInt: Integer;
 }

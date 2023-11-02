@@ -15,7 +15,4 @@ pageextension 50152 EInvState extends States
     {
         // Add changes to page actions here
     }
-
-    var
-        myInt: Integer;
 }

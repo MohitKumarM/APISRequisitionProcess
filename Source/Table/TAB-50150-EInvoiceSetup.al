@@ -62,6 +62,4 @@ table 50100 "E-Invoice Set Up"
             Clustered = true;
         }
     }
-
-
 }

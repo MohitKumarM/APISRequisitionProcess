@@ -7,18 +7,14 @@ enum 50151 "Irn Status"
     }
     value(1; "Failed")
     {
-
     }
     value(2; Submitted)
     {
-
     }
     value(3; "Cancelled")
     {
-
     }
     value(4; "Cancel Failed")
     {
-
     }
 }

@@ -2,7 +2,6 @@ pageextension 50154 EInvPostedSalesCrMemo extends "Posted Sales Credit Memo"
 {
     layout
     {
-
         modify("IRN Hash")
         {
             Enabled = false;
@@ -99,7 +98,6 @@ pageextension 50154 EInvPostedSalesCrMemo extends "Posted Sales Credit Memo"
                     RunObject = page "E-Invoice Log";
                     RunPageLink = "Document Type" = filter('Credit Memo'),
                     "No." = field("No.");
-
                 }
                 action("Cancel Irn")
                 {
@@ -153,11 +151,7 @@ pageextension 50154 EInvPostedSalesCrMemo extends "Posted Sales Credit Memo"
                         end
                     end;
                 }
-
             }
         }
     }
-
-    var
-        myInt: Integer;
 }

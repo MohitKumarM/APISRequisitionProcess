@@ -29,7 +29,6 @@ page 50150 "E-Invoice Setup"
                 {
                     ToolTip = 'Specifies the value of the Authentication URL field.';
                 }
-
                 field("E-Invoice URl"; Rec."E-Invoice URl")
                 {
                     ToolTip = 'Specifies the value of the E-Invoice URl field.';
@@ -50,7 +49,6 @@ page 50150 "E-Invoice Setup"
                 {
                     ApplicationArea = all;
                 }
-
                 field("Round GL Account 1"; Rec."Round GL Account 1")
                 {
                     ToolTip = 'Specifies the value of the Round GL Account 1 field.';

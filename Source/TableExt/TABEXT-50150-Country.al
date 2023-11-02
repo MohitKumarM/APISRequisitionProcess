@@ -7,7 +7,4 @@ tableextension 50150 EInvCountry extends "Country/Region"
             DataClassification = ToBeClassified;
         }
     }
-
-    var
-        myInt: Integer;
 }

@@ -19,7 +19,4 @@ tableextension 50155 EInvSalesInvoiceHeader extends "Sales Invoice Header"
             DataClassification = ToBeClassified;
         }
     }
-
-    var
-        myInt: Integer;
 }

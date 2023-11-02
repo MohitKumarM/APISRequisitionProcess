@@ -15,7 +15,4 @@ pageextension 50150 EInvCountry extends "Countries/Regions"
     {
         // Add changes to page actions here
     }
-
-    var
-        myInt: Integer;
 }

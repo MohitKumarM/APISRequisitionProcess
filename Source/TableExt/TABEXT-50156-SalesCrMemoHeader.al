@@ -26,9 +26,5 @@ tableextension 50156 EInvSalesCrMemoHeader extends "Sales Cr.Memo Header"
         {
             DataClassification = ToBeClassified;
         }
-
     }
-
-    var
-        myInt: Integer;
 }

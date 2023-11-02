@@ -2,7 +2,6 @@ codeunit 50151 "E-Way Bill Generartion"
 {
     trigger OnRun()
     begin
-
     end;
 
     var
@@ -65,7 +64,6 @@ codeunit 50151 "E-Way Bill Generartion"
         AuthenticateToken(GSTIN);
         GenerateEwayRequestSendtobinary(DocNo, DocumentType, PayloadText, GSTIN);
     end;
-
 
     local procedure ReadActionDetails(var JReadActionDtls: JsonObject; DocNo: Code[20]; DocumentType: Option " ",Invoice,"Credit Memo","Transfer Shipment")
     var
@@ -457,7 +455,6 @@ codeunit 50151 "E-Way Bill Generartion"
 
     local procedure GenerateEwayRequestSendtobinary(DocNo: Code[20]; DocumentType: Option " ",Invoice,"Credit Memo","Transfer Shipment"; JsonPayload: Text; GSTIN: Code[20])
     var
-        Location: Record "Location";
         EInvoiceLog: Record E_Invoice_Log;
         Outstrm: OutStream;
         RequestResponse: BigText;
@@ -565,7 +562,6 @@ codeunit 50151 "E-Way Bill Generartion"
                             EInvoiceLog."G_E-Way bill Output Response".CREATEOUTSTREAM(Outstrm);
                             RequestResponse.WRITE(Outstrm);
                             EInvoiceLog.Modify();
-
                         end;
                     end;
                 DocumentType::"Credit Memo":
@@ -599,7 +595,6 @@ codeunit 50151 "E-Way Bill Generartion"
                             EInvoiceLog."G_E-Way bill Output Response".CREATEOUTSTREAM(Outstrm);
                             RequestResponse.WRITE(Outstrm);
                             EInvoiceLog.Modify();
-
                         end;
                     end;
                 DocumentType::"Transfer Shipment":
@@ -633,7 +628,6 @@ codeunit 50151 "E-Way Bill Generartion"
                             EInvoiceLog."G_E-Way bill Output Response".CREATEOUTSTREAM(Outstrm);
                             RequestResponse.WRITE(Outstrm);
                             EInvoiceLog.Modify();
-
                         end;
                     end;
             end;
@@ -643,7 +637,6 @@ codeunit 50151 "E-Way Bill Generartion"
 
     procedure CancelEWayBill(DocNo: Code[20]; DocumentType: Option " ",Invoice,"Credit Memo","Transfer Shipment")
     var
-        Location: Record "Location";
         Body: Text;
         EinvoiceHttpContent: HttpContent;
         EinvoiceHttpHeader: HttpHeaders;
@@ -851,7 +844,6 @@ codeunit 50151 "E-Way Bill Generartion"
                             EInvoiceLog.Modify();
                         end;
                     end;
-
             end;
         end else
             Message(Team001);
@@ -918,7 +910,4 @@ codeunit 50151 "E-Way Bill Generartion"
         CanclEwayObject.Add('data', CanclEwayArray);
         CanclEwayObject.WriteTo(CancelBody);
     end;
-
-
-
 }

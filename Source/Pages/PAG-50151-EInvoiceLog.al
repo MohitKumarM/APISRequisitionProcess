@@ -16,7 +16,6 @@ page 50312 "E-Invoice Log"
                 {
                     ApplicationArea = All;
                     Editable = false;
-
                 }
                 field("No."; Rec."No.")
                 {
@@ -37,7 +36,6 @@ page 50312 "E-Invoice Log"
                 field("IRN Hash"; Rec."IRN Hash")
                 {
                     Editable = false;
-
                 }
                 field("QR Code"; Rec."QR Code")
                 {
@@ -55,7 +53,6 @@ page 50312 "E-Invoice Log"
                 {
                     ApplicationArea = all;
                 }
-
                 field("E-Way Bill No"; Rec."E-Way Bill No")
                 {
                     ApplicationArea = all;
@@ -74,18 +71,14 @@ page 50312 "E-Invoice Log"
                 }
                 /* field("Sent Response"; SendResponse)
                 {
-
                 }
                 field("Output Response"; OutputResPonse)
                 {
-
                 } */
-
             }
         }
         area(Factboxes)
         {
-
         }
     }
 
@@ -93,16 +86,12 @@ page 50312 "E-Invoice Log"
     {
         area(Processing)
         {
-
-
             action("Generate IRN Sent Request")
             {
                 ApplicationArea = All;
                 Promoted = true;
                 Enabled = GIRNSent;
                 trigger OnAction()
-                var
-                    TempBlob: Codeunit "Temp Blob";
 
                 begin
                     Rec.CALCFIELDS("G_IRN Sent Request");
@@ -230,10 +219,7 @@ page 50312 "E-Invoice Log"
         }
     }
 
-
     var
-        SendResponse: Text;
-        OutputResPonse: Text;
         Instrm: InStream;
         FileName: Text;
         GEWbSendRequest: Boolean;
@@ -246,8 +232,6 @@ page 50312 "E-Invoice Log"
         CancelIRNOutput: Boolean;
 
     trigger OnAfterGetRecord()
-    var
-        myInt: Integer;
     begin
         Rec.CalcFields("G_E-Way bill Sent Request");
         if not Rec."G_E-Way bill Sent Request".HasValue then
@@ -289,7 +273,5 @@ page 50312 "E-Invoice Log"
             CancelEWBOutput := false
         else
             CancelEWBOutput := true;
-
     end;
-
 }

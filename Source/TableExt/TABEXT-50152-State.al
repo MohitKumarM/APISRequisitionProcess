@@ -7,7 +7,4 @@ tableextension 50152 EInvState extends State
             DataClassification = ToBeClassified;
         }
     }
-
-    var
-        myInt: Integer;
 }

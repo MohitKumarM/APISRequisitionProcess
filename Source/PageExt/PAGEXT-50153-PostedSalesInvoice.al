@@ -106,7 +106,6 @@ pageextension 50153 EInvPostedSalesInvoice extends "Posted Sales Invoice"
                     RunObject = page "E-Invoice Log";
                     RunPageLink = "Document Type" = filter('Invoice'),
                     "No." = field("No.");
-
                 }
                 action("Cancel Irn")
                 {
@@ -160,12 +159,7 @@ pageextension 50153 EInvPostedSalesInvoice extends "Posted Sales Invoice"
                         end
                     end;
                 }
-
-
-
             }
         }
     }
-    var
-        myInt: Integer;
 }

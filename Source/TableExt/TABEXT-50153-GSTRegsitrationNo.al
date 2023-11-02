@@ -11,7 +11,4 @@ tableextension 50153 EInvGSTRegistration extends "GST Registration Nos."
             DataClassification = ToBeClassified;
         }
     }
-
-    var
-        myInt: Integer;
 }
