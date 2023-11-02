@@ -539,6 +539,7 @@ codeunit 50151 "E-Way Bill Generartion"
                         if SalesInvoiceHeader.get(DocNo) then begin
                             SalesInvoiceHeader."E-Way Bill No." := EwayBillN;
                             SalesInvoiceHeader."E-Way Bill Date Time" := EWayBillDate;
+                            SalesInvoiceHeader."E-Way Bill Cancel DateTime" := 0DT;
                             SalesInvoiceHeader.Modify();
                         end;
                         EInvoiceLog.Reset();
@@ -553,12 +554,14 @@ codeunit 50151 "E-Way Bill Generartion"
                             else
                                 EInvoiceLog."E-Way Bill Status" := EInvoiceLog."E-Way Bill Status"::Failed;
                             EInvoiceLog."Error Message" := ErrorMsg;
+                            EInvoiceLog."E-Way Bill Cancel DateTime" := 0DT;
+                            EInvoiceLog."Current Date Time" := CurrentDateTime;
                             CLEAR(RequestResponse);
                             RequestResponse.ADDTEXT(JsonPayload);
                             EInvoiceLog."G_E-Way bill Sent Request".CREATEOUTSTREAM(Outstrm);
                             RequestResponse.WRITE(Outstrm);
                             CLEAR(RequestResponse);
-                            RequestResponse.ADDTEXT(JsonPayload);
+                            RequestResponse.ADDTEXT(ResultMessage);
                             EInvoiceLog."G_E-Way bill Output Response".CREATEOUTSTREAM(Outstrm);
                             RequestResponse.WRITE(Outstrm);
                             EInvoiceLog.Modify();
@@ -570,6 +573,7 @@ codeunit 50151 "E-Way Bill Generartion"
                         if SalesCrMemoHeader.get(DocNo) then begin
                             SalesCrMemoHeader."E-Way Bill No." := EwayBillN;
                             SalesCrMemoHeader."E-Way Bill Date Time" := EWayBillDate;
+                            SalesCrMemoHeader."E-Way Bill Cancel DateTime" := 0DT;
                             SalesCrMemoHeader.Modify();
                         end;
                         EInvoiceLog.Reset();
@@ -584,12 +588,14 @@ codeunit 50151 "E-Way Bill Generartion"
                             else
                                 EInvoiceLog."E-Way Bill Status" := EInvoiceLog."E-Way Bill Status"::Failed;
                             EInvoiceLog."Error Message" := ErrorMsg;
+                            EInvoiceLog."E-Way Bill Cancel DateTime" := 0DT;
+                            EInvoiceLog."Current Date Time" := CurrentDateTime;
                             CLEAR(RequestResponse);
                             RequestResponse.ADDTEXT(JsonPayload);
                             EInvoiceLog."G_E-Way bill Sent Request".CREATEOUTSTREAM(Outstrm);
                             RequestResponse.WRITE(Outstrm);
                             CLEAR(RequestResponse);
-                            RequestResponse.ADDTEXT(JsonPayload);
+                            RequestResponse.ADDTEXT(ResultMessage);
                             EInvoiceLog."G_E-Way bill Output Response".CREATEOUTSTREAM(Outstrm);
                             RequestResponse.WRITE(Outstrm);
                             EInvoiceLog.Modify();
@@ -601,6 +607,7 @@ codeunit 50151 "E-Way Bill Generartion"
                         if TransferShipmentHeader.get(DocNo) then begin
                             TransferShipmentHeader."E-Way Bill No." := EwayBillN;
                             TransferShipmentHeader."E-Way Bill Date Time" := EWayBillDate;
+                            TransferShipmentHeader."E-Way Bill Cancel DateTime" := 0DT;
                             TransferShipmentHeader.Modify();
                         end;
                         EInvoiceLog.Reset();
@@ -615,12 +622,14 @@ codeunit 50151 "E-Way Bill Generartion"
                             else
                                 EInvoiceLog."E-Way Bill Status" := EInvoiceLog."E-Way Bill Status"::Failed;
                             EInvoiceLog."Error Message" := ErrorMsg;
+                            EInvoiceLog."Current Date Time" := CurrentDateTime;
+                            EInvoiceLog."E-Way Bill Cancel DateTime" := 0DT;
                             CLEAR(RequestResponse);
                             RequestResponse.ADDTEXT(JsonPayload);
                             EInvoiceLog."G_E-Way bill Sent Request".CREATEOUTSTREAM(Outstrm);
                             RequestResponse.WRITE(Outstrm);
                             CLEAR(RequestResponse);
-                            RequestResponse.ADDTEXT(JsonPayload);
+                            RequestResponse.ADDTEXT(ResultMessage);
                             EInvoiceLog."G_E-Way bill Output Response".CREATEOUTSTREAM(Outstrm);
                             RequestResponse.WRITE(Outstrm);
                             EInvoiceLog.Modify();
@@ -631,6 +640,285 @@ codeunit 50151 "E-Way Bill Generartion"
         end else
             Message(Team001);
     end;
+
+    procedure CancelEWayBill(DocNo: Code[20]; DocumentType: Option " ",Invoice,"Credit Memo","Transfer Shipment")
+    var
+        Location: Record "Location";
+        Body: Text;
+        EinvoiceHttpContent: HttpContent;
+        EinvoiceHttpHeader: HttpHeaders;
+        EinvoiceHttpRequest: HttpRequestMessage;
+        EinvoiceHttpClient: HttpClient;
+        EinvoiceHttpResponse: HttpResponseMessage;
+        JResultToken: JsonToken;
+        JResultObject: JsonObject;
+        ResultMessage: Text;
+        EinvoiceSetup: Record "E-Invoice Set Up";
+        SalesInvoiceHeader: Record "Sales Invoice Header";
+        SalesCrMemoHeader: Record "Sales Cr.Memo Header";
+        TransferShipmentHeader: Record "Transfer Shipment Header";
+        LocationG: Record Location;
+        GSTIN: Code[20];
+        EWayCancel: Boolean;
+        JOutputObject: JsonObject;
+        JOutputToken: JsonToken;
+        EwayBillN: Code[50];
+        OutputMessage: Text;
+        RequestResponse: BigText;
+        Outstrm: OutStream;
+        EInvoiceLog: Record E_Invoice_Log;
+        EWayBillDate: DateTime;
+        YearCode: Integer;
+        MonthCode: Integer;
+        DayCode: Integer;
+        EwaybillDateText: Text;
+
+        ErrorMsg: Text;
+
+    begin
+        EinvoiceSetup.Get();
+        G_Client_ID := EInvoiceSetup."Client ID";
+        G_Client_Secret := EInvoiceSetup."Client Secret";
+        G_IP_Address := EInvoiceSetup."IP Address";
+        G_Authenticate_URL := EInvoiceSetup."Authentication URL";
+        G_E_Invoice_URL := EInvoiceSetup."E-Invoice URl";
+        case
+            DocumentType of
+            DocumentType::Invoice:
+                begin
+                    if SalesInvoiceHeader.get(DocNo) then begin
+                        GSTIN := SalesInvoiceHeader."Location GST Reg. No.";
+                    end;
+                end;
+            DocumentType::"Credit Memo":
+                begin
+                    if SalesCrMemoHeader.get(DocNo) then
+                        GSTIN := SalesCrMemoHeader."Location GST Reg. No.";
+                end;
+            DocumentType::"Transfer Shipment":
+                begin
+                    if TransferShipmentHeader.get(DocNo) then begin
+                        if LocationG.get(TransferShipmentHeader."Transfer-from Code") then
+                            GSTIN := LocationG."GST Registration No.";
+                    end;
+                end;
+        end;
+        AuthenticateToken(GSTIN);
+        ReadCancelEWayBillBody(DocNo, DocumentType, Body);
+        EinvoiceHttpContent.WriteFrom(Format(Body));
+        EinvoiceHttpContent.GetHeaders(EinvoiceHttpHeader);
+        EinvoiceHttpHeader.Clear();
+        // For Productuion
+        EinvoiceHttpHeader.Add('PRIVATEKEY', EinvoiceSetup."Private Key");
+        EinvoiceHttpHeader.Add('PRIVATEVALUE', EinvoiceSetup."Private Value");
+        EinvoiceHttpHeader.Add('IP', EinvoiceSetup."Private IP");
+        EinvoiceHttpHeader.Add('Content-Type', 'application/json');
+        EinvoiceHttpHeader.Add('Gstin', GSTIN);
+        EinvoiceHttpRequest.Content := EinvoiceHttpContent;
+        EinvoiceHttpRequest.SetRequestUri(EinvoiceSetup."Cancel E-Way Bill URL");
+        EinvoiceHttpRequest.Method := 'POST';
+        // For Productuion
+        if EinvoiceHttpClient.Send(EinvoiceHttpRequest, EinvoiceHttpResponse) then begin
+            EinvoiceHttpResponse.Content.ReadAs(ResultMessage);
+            JResultObject.ReadFrom(ResultMessage);
+            //Message(ResultMessage);
+            if JResultObject.Get('MessageId', JResultToken) then
+                if JResultToken.AsValue().AsInteger() = 1 then begin
+                    if JResultObject.Get('Message', JResultToken) then;
+                    //Message(Format(JResultToken));
+                end else begin
+                    if JResultObject.Get('Message', JResultToken) then
+                        ErrorMsg := JResultToken.AsValue().AsText();
+                    Message('%1,%2', ErrorMsg, 'E-Way Bill Cancel Failed');
+                end;
+
+            if JResultObject.Get('Data', JResultToken) then
+                if JResultToken.IsObject then begin
+                    JResultToken.WriteTo(OutputMessage);
+                    JOutputObject.ReadFrom(OutputMessage);
+                    if JOutputObject.Get('CancelDate', JOutputToken) then
+                        EwaybillDateText := JOutputToken.AsValue().AsText();
+                    Evaluate(YearCode, CopyStr(EwaybillDateText, 1, 4));
+                    Evaluate(MonthCode, CopyStr(EwaybillDateText, 6, 2));
+                    Evaluate(DayCode, CopyStr(EwaybillDateText, 9, 2));
+                    Evaluate(EWayBillDate, Format(DMY2Date(DayCode, MonthCode, YearCode)) + ' ' + Copystr(EwaybillDateText, 12, 8));
+                    if JOutputObject.Get('EwbNo', JOutputToken) then
+                        EwayBillN := JOutputToken.AsValue().AsText();
+                    EWayCancel := true;
+                    Message('E-Way Bill Generated Successfully!!');
+                end;
+            case
+                DocumentType of
+                DocumentType::Invoice:
+                    begin
+                        if SalesInvoiceHeader.get(DocNo) then begin
+                            if EWayCancel then begin
+                                SalesInvoiceHeader."E-Way Bill No." := '';
+                                SalesInvoiceHeader."E-Way Bill Cancel DateTime" := EWayBillDate;
+                                SalesInvoiceHeader.Modify();
+                            end;
+                        end;
+                        EInvoiceLog.Reset();
+                        EInvoiceLog.SetRange(EInvoiceLog."Document Type", EInvoiceLog."Document Type"::Invoice);
+                        EInvoiceLog.SetRange("IRN Status", EInvoiceLog."IRN Status"::Submitted);
+                        EInvoiceLog.SetRange("E-Way Bill Status", EInvoiceLog."E-Way Bill Status"::Submitted);
+                        EInvoiceLog.SetRange("No.", DocNo);
+                        if EInvoiceLog.FindFirst() then begin
+                            EInvoiceLog."E-Way Bill No" := '';
+                            if EWayCancel then begin
+                                EInvoiceLog."E-Way Bill Status" := EInvoiceLog."E-Way Bill Status"::Cancelled;
+                                EInvoiceLog."E-Way Bill Cancel DateTime" := EWayBillDate;
+                            end else
+                                EInvoiceLog."E-Way Bill Status" := EInvoiceLog."E-Way Bill Status"::"Cancel Failed";
+                            EInvoiceLog."Error Message" := ErrorMsg;
+                            EInvoiceLog."Current Date Time" := CurrentDateTime;
+                            CLEAR(RequestResponse);
+                            RequestResponse.ADDTEXT(Body);
+                            EInvoiceLog."E-Way Bill Cancel Request".CREATEOUTSTREAM(Outstrm);
+                            RequestResponse.WRITE(Outstrm);
+                            CLEAR(RequestResponse);
+                            RequestResponse.ADDTEXT(ResultMessage);
+                            EInvoiceLog."E-Way Bill Cancel Output".CREATEOUTSTREAM(Outstrm);
+                            RequestResponse.WRITE(Outstrm);
+                            EInvoiceLog.Modify();
+                        end;
+                    end;
+                DocumentType::"Credit Memo":
+                    begin
+                        if SalesCrMemoHeader.get(DocNo) then begin
+                            if EWayCancel then begin
+                                SalesCrMemoHeader."E-Way Bill No." := '';
+                                SalesCrMemoHeader."E-Way Bill Cancel DateTime" := EWayBillDate;
+                                SalesCrMemoHeader.Modify();
+                            end;
+                        end;
+                        EInvoiceLog.Reset();
+                        EInvoiceLog.SetRange(EInvoiceLog."Document Type", EInvoiceLog."Document Type"::"Credit Memo");
+                        EInvoiceLog.SetRange("IRN Status", EInvoiceLog."IRN Status"::Submitted);
+                        EInvoiceLog.SetRange("E-Way Bill Status", EInvoiceLog."E-Way Bill Status"::Submitted);
+                        EInvoiceLog.SetRange("No.", DocNo);
+                        if EInvoiceLog.FindFirst() then begin
+                            EInvoiceLog."E-Way Bill No" := '';
+                            if EWayCancel then begin
+                                EInvoiceLog."E-Way Bill Status" := EInvoiceLog."E-Way Bill Status"::Cancelled;
+                                EInvoiceLog."E-Way Bill Cancel DateTime" := EWayBillDate;
+                            end else
+                                EInvoiceLog."E-Way Bill Status" := EInvoiceLog."E-Way Bill Status"::"Cancel Failed";
+                            EInvoiceLog."Error Message" := ErrorMsg;
+                            EInvoiceLog."Current Date Time" := CurrentDateTime;
+                            CLEAR(RequestResponse);
+                            RequestResponse.ADDTEXT(Body);
+                            EInvoiceLog."E-Way Bill Cancel Request".CREATEOUTSTREAM(Outstrm);
+                            RequestResponse.WRITE(Outstrm);
+                            CLEAR(RequestResponse);
+                            RequestResponse.ADDTEXT(ResultMessage);
+                            EInvoiceLog."E-Way Bill Cancel Output".CREATEOUTSTREAM(Outstrm);
+                            RequestResponse.WRITE(Outstrm);
+                            EInvoiceLog.Modify();
+                        end;
+                    end;
+                DocumentType::"Transfer Shipment":
+                    begin
+                        if TransferShipmentHeader.get(DocNo) then begin
+                            if EWayCancel then begin
+                                TransferShipmentHeader."E-Way Bill No." := '';
+                                TransferShipmentHeader."E-Way Bill Cancel DateTime" := EWayBillDate;
+                                TransferShipmentHeader.Modify();
+                            end;
+                        end;
+                        EInvoiceLog.Reset();
+                        EInvoiceLog.SetRange(EInvoiceLog."Document Type", EInvoiceLog."Document Type"::Invoice);
+                        EInvoiceLog.SetRange("IRN Status", EInvoiceLog."IRN Status"::Submitted);
+                        EInvoiceLog.SetRange("E-Way Bill Status", EInvoiceLog."E-Way Bill Status"::Submitted);
+                        EInvoiceLog.SetRange("No.", DocNo);
+                        if EInvoiceLog.FindFirst() then begin
+                            EInvoiceLog."E-Way Bill No" := '';
+                            if EWayCancel then begin
+                                EInvoiceLog."E-Way Bill Status" := EInvoiceLog."E-Way Bill Status"::Cancelled;
+                                EInvoiceLog."E-Way Bill Cancel DateTime" := EWayBillDate;
+                            end else
+                                EInvoiceLog."E-Way Bill Status" := EInvoiceLog."E-Way Bill Status"::"Cancel Failed";
+                            EInvoiceLog."Error Message" := ErrorMsg;
+                            EInvoiceLog."Current Date Time" := CurrentDateTime;
+                            CLEAR(RequestResponse);
+                            RequestResponse.ADDTEXT(Body);
+                            EInvoiceLog."E-Way Bill Cancel Request".CREATEOUTSTREAM(Outstrm);
+                            RequestResponse.WRITE(Outstrm);
+                            CLEAR(RequestResponse);
+                            RequestResponse.ADDTEXT(ResultMessage);
+                            EInvoiceLog."E-Way Bill Cancel Output".CREATEOUTSTREAM(Outstrm);
+                            RequestResponse.WRITE(Outstrm);
+                            EInvoiceLog.Modify();
+                        end;
+                    end;
+
+            end;
+        end else
+            Message(Team001);
+    end;
+
+    local procedure ReadCancelEWayBillBody(DocNo: Code[20]; DocumentType: Option " ",Invoice,"Credit Memo","Transfer Shipment"; Var CancelBody: Text)
+    var
+        EWB_SalesInoviceHeader: Record "Sales Invoice Header";
+        EWB_SalesCrMemoHeader: Record "Sales Cr.Memo Header";
+        EWB_TransferShipmentHeader: Record "Transfer Shipment Header";
+        EWB_Location: Record Location;
+        GSTIN: Code[20];
+        EWBNo: Code[50];
+        CancelReason: Text;
+        CancelRemarks: Text;
+    begin
+        case
+            DocumentType of
+            DocumentType::Invoice:
+                begin
+                    if EWB_SalesInoviceHeader.get(DocNo) then begin
+                        GSTIN := format(EWB_SalesInoviceHeader."Location GST Reg. No.");
+                        EWBNo := format(EWB_SalesInoviceHeader."E-Way Bill No.");
+                        CancelReason := format(EWB_SalesInoviceHeader."Cancel Reason");
+                        CancelRemarks := format(EWB_SalesInoviceHeader."Cancel Remarks");
+                    end;
+                end;
+            DocumentType::"Credit Memo":
+                begin
+                    if EWB_SalesCrMemoHeader.get(DocNo) then begin
+                        GSTIN := format(EWB_SalesCrMemoHeader."Location GST Reg. No.");
+                        EWBNo := format(EWB_SalesCrMemoHeader."E-Way Bill No.");
+                        CancelReason := format(EWB_SalesCrMemoHeader."Cancel Reason");
+                        CancelRemarks := format(EWB_SalesCrMemoHeader."Cancel Remarks");
+                    end;
+                end;
+            DocumentType::"Transfer Shipment":
+                begin
+                    if EWB_TransferShipmentHeader.get(DocNo) then begin
+                        if EWB_Location.get(EWB_TransferShipmentHeader."Transfer-from Code") then
+                            GSTIN := format(EWB_Location."GST Registration No.");
+                        EWBNo := format(EWB_TransferShipmentHeader."E-Way Bill No.");
+                        CancelReason := format(EWB_TransferShipmentHeader."Cancel Reason");
+                        CancelRemarks := format(EWB_TransferShipmentHeader."Cancel Remarks");
+                    end;
+                end;
+        end;
+        WriteCancelEWayBiilBody(CancelBody, GSTIN, EWBNo, CancelReason, CancelRemarks);
+    end;
+
+    local procedure WriteCancelEWayBiilBody(var CancelBody: Text; GSTIN: Code[20];
+        EWBNo: Code[50]; CancelReason: Text; CancelRemarks: Text)
+    var
+        CanclEwayObject: JsonObject;
+        CanclEwayObject2: JsonObject;
+        CanclEwayArray: JsonArray;
+    begin
+        CanclEwayObject.Add('action', 'action');
+        CanclEwayObject2.Add('Generator_Gstin', GSTIN);
+        CanclEwayObject2.Add('ewbNo', EWBNo);
+        CanclEwayObject2.Add('CancelReason', CancelReason);
+        CanclEwayObject2.Add('cancelRmrk', CancelRemarks);
+        CanclEwayArray.Add(CanclEwayObject2);
+        CanclEwayObject.Add('data', CanclEwayArray);
+        CanclEwayObject.WriteTo(CancelBody);
+    end;
+
 
 
 }

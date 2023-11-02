@@ -22,6 +22,11 @@ tableextension 50156 EInvSalesCrMemoHeader extends "Sales Cr.Memo Header"
         {
             DataClassification = ToBeClassified;
         }
+        field(50155; "E-Way Bill Cancel DateTime"; DateTime)
+        {
+            DataClassification = ToBeClassified;
+        }
+
     }
 
     var

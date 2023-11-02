@@ -91,6 +91,21 @@ table 50102 E_Invoice_Log
         {
             DataClassification = ToBeClassified;
         }
+        field(21; "E-Way Bill Cancel DateTime"; DateTime)
+        {
+            DataClassification = ToBeClassified;
+        }
+        field(22; "E-Way Bill Cancel Request"; Blob)
+        {
+            Subtype = Bitmap;
+            DataClassification = ToBeClassified;
+        }
+        field(23; "E-Way Bill Cancel Output"; Blob)
+        {
+            Subtype = Bitmap;
+            DataClassification = ToBeClassified;
+
+        }
 
     }
 
@@ -101,52 +116,6 @@ table 50102 E_Invoice_Log
             Clustered = true;
         }
     }
-    procedure SendResponse(): Text
-    var
-        CR: Text[1];
-        instr: InStream;
-        Encoding: TextEncoding;
-        ContentLine: Text;
-        Content: Text;
-    begin
-        CALCFIELDS("G_IRN Sent Request");
-        IF NOT "G_IRN Sent Request".HASVALUE THEN
-            EXIT('');
-        CR[1] := 10;
-        Clear(Content);
-        Clear(instr);
-        "G_IRN Sent Request".CreateInStream(instr, TextEncoding::Windows);
-        instr.READTEXT(Content);
-        WHILE NOT instr.EOS DO BEGIN
-            instr.READTEXT(ContentLine);
-            Content += CR[1] + ContentLine;
-        END;
-        exit(Content);
-    end;
-
-
-    procedure GetAPIResponse(): Text
-    var
-        CR: Text[1];
-        instr: InStream;
-        Encoding: TextEncoding;
-        ContentLine: Text;
-        Content: Text;
-    begin
-        CALCFIELDS("G_IRN Output Response");
-        IF NOT "G_IRN Output Response".HASVALUE THEN
-            EXIT('');
-        CR[1] := 10;
-        Clear(Content);
-        Clear(instr);
-        "G_IRN Output Response".CreateInStream(instr, TextEncoding::Windows);
-        instr.READTEXT(Content);
-        WHILE NOT instr.EOS DO BEGIN
-            instr.READTEXT(ContentLine);
-            Content += CR[1] + ContentLine;
-        END;
-        exit(Content);
-    end;
 
     procedure GenerateIRNSentResponseReadAsText(LineSeparator: Text; Encoding: TextEncoding) Content: Text
     var
@@ -237,6 +206,37 @@ table 50102 E_Invoice_Log
             Content += LineSeparator + ContentLine;
         END;
     end;
+
+    procedure CancelEWayBillSentResponseReadAsText(LineSeparator: Text; Encoding: TextEncoding) Content: Text
+    var
+        InStream: InStream;
+        ContentLine: Text;
+    begin
+        CALCFIELDS("E-Way Bill Cancel Request");
+        "E-Way Bill Cancel Request".CREATEINSTREAM(InStream, Encoding);
+
+        InStream.READTEXT(Content);
+        WHILE NOT InStream.EOS DO BEGIN
+            InStream.READTEXT(ContentLine);
+            Content += LineSeparator + ContentLine;
+        END;
+    end;
+
+    procedure CancelEWayBillOutPutResponseReadAsText(LineSeparator: Text; Encoding: TextEncoding) Content: Text
+    var
+        InStream: InStream;
+        ContentLine: Text;
+    begin
+        CALCFIELDS("E-Way Bill Cancel Output");
+        "E-Way Bill Cancel Output".CREATEINSTREAM(InStream, Encoding);
+
+        InStream.READTEXT(Content);
+        WHILE NOT InStream.EOS DO BEGIN
+            InStream.READTEXT(ContentLine);
+            Content += LineSeparator + ContentLine;
+        END;
+    end;
+
 
 
 }

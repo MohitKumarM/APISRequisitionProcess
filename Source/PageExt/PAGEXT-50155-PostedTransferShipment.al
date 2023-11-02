@@ -2,6 +2,19 @@ pageextension 50155 EInvPostedTransferShipment extends "Posted Transfer Shipment
 {
     layout
     {
+
+        modify("Transport Method")
+        {
+            Editable = true;
+        }
+        modify("Vehicle No.")
+        {
+            Editable = true;
+        }
+        modify("Vehicle Type")
+        {
+            Editable = true;
+        }
         addafter("Foreign Trade")
         {
             group("E-Invoice Information")
@@ -45,6 +58,11 @@ pageextension 50155 EInvPostedTransferShipment extends "Posted Transfer Shipment
                     Editable = false;
                 }
                 field("E-Way Bill Date Time"; Rec."E-Way Bill Date Time")
+                {
+                    ApplicationArea = all;
+                    Editable = false;
+                }
+                field("E-Way Bill Cancel DateTime"; Rec."E-Way Bill Cancel DateTime")
                 {
                     ApplicationArea = all;
                     Editable = false;
@@ -129,6 +147,22 @@ pageextension 50155 EInvPostedTransferShipment extends "Posted Transfer Shipment
                             Rec.TestField("E-Way Bill No.", '');
                             Clear(EWaybillGeneration);
                             EWaybillGeneration.GenerateEWayBillFromIRN(Rec."No.", 3);
+                        end
+                    end;
+                }
+                action("Cancel E-Way Bill")
+                {
+                    ApplicationArea = All;
+
+                    trigger OnAction()
+                    var
+                        EWaybillGeneration: Codeunit "E-Way Bill Generartion";
+                    begin
+                        if Confirm('Do you want to Generate E-Way Bill No.?', false) then begin
+                            Rec.TestField("E-Way Bill Cancel DateTime", 0DT);
+                            Rec.TestField("E-Way Bill No.");
+                            Clear(EWaybillGeneration);
+                            EWaybillGeneration.CancelEWayBill(Rec."No.", 3);
                         end
                     end;
                 }

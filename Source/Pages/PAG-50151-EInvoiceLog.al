@@ -22,6 +22,10 @@ page 50312 "E-Invoice Log"
                 {
                     Editable = false;
                 }
+                field("Error Message"; Rec."Error Message")
+                {
+                    ApplicationArea = all;
+                }
                 field("Acknowledge No."; Rec."Acknowledge No.")
                 {
                     Editable = false;
@@ -51,10 +55,7 @@ page 50312 "E-Invoice Log"
                 {
                     ApplicationArea = all;
                 }
-                field("Error Message"; Rec."Error Message")
-                {
-                    ApplicationArea = all;
-                }
+
                 field("E-Way Bill No"; Rec."E-Way Bill No")
                 {
                     ApplicationArea = all;
@@ -64,6 +65,10 @@ page 50312 "E-Invoice Log"
                     ApplicationArea = all;
                 }
                 field("E-Way Bill Status"; Rec."E-Way Bill Status")
+                {
+                    ApplicationArea = all;
+                }
+                field("E-Way Bill Cancel DateTime"; Rec."E-Way Bill Cancel DateTime")
                 {
                     ApplicationArea = all;
                 }
@@ -89,56 +94,23 @@ page 50312 "E-Invoice Log"
         area(Processing)
         {
 
-            /* action("Ouput Payload")
-            {
-                ApplicationArea = All;
-                Promoted = true;
-                trigger OnAction()
-                var
-                    Instrm: InStream;
-                    ReturnText: Text;
-                begin
-                    Rec.CalcFields("Output Response");
-                    If rec."Output Response".HasValue() then begin
-                        rec."Output Response".CreateInStream(Instrm);
-                        Instrm.Read(ReturnText);
-                        Message(ReturnText);
-                    end;
-                end;
-            }
-            action("Json Payload")
-            {
-                ApplicationArea = All;
-                Promoted = true;
-                trigger OnAction()
-                var
-                    Instrm: InStream;
-                    ReturnText: Text;
-                    Text001: Label 'Parijat C&F';
-                    Test: Notification;
-                begin
-                    Rec.CalcFields("Sent Response");
-                    If rec."Sent Response".HasValue() then begin
-                        rec."Sent Response".CreateInStream(Instrm);
-                        Instrm.Read(ReturnText);
-                        Message(ReturnText);
-                    end;
-                end;
-            } */
+
             action("Generate IRN Sent Request")
             {
                 ApplicationArea = All;
                 Promoted = true;
+                Enabled = GIRNSent;
                 trigger OnAction()
                 var
                     TempBlob: Codeunit "Temp Blob";
-                    Instrm: InStream;
-                    FileName: Text;
+
                 begin
                     Rec.CALCFIELDS("G_IRN Sent Request");
+                    if not Rec."G_IRN Sent Request".HasValue then
+                        exit;
                     MESSAGE(Rec.GenerateIRNSentResponseReadAsText('', TEXTENCODING::UTF8));
                     Rec."G_IRN Sent Request".CreateInStream(Instrm);
-                    FileName := Rec."No." + '.txt';
+                    FileName := Rec."No." + '_IRN Request Payload' + '.txt';
                     DownloadFromStream(Instrm, 'Export', '', 'All Files (*.*)|*.*', FileName);
                 end;
             }
@@ -146,30 +118,48 @@ page 50312 "E-Invoice Log"
             {
                 ApplicationArea = All;
                 Promoted = true;
+                Enabled = GIRNOutput;
                 trigger OnAction()
                 begin
                     Rec.CALCFIELDS("G_IRN Output Response");
+                    if not Rec."G_IRN Output Response".HasValue then
+                        exit;
                     MESSAGE(Rec.GenerateIRNOutPutResponseReadAsText('', TEXTENCODING::UTF8));
+                    Rec."G_IRN Output Response".CreateInStream(Instrm);
+                    FileName := Rec."No." + '_IRN Output Payload' + '.txt';
+                    DownloadFromStream(Instrm, 'Export', '', 'All Files (*.*)|*.*', FileName);
                 end;
             }
             action("Cancel IRN Sent Request")
             {
                 ApplicationArea = All;
                 Promoted = true;
+                Enabled = CancelIRNSent;
                 trigger OnAction()
                 begin
                     Rec.CALCFIELDS("C_IRN Sent Request");
-                    MESSAGE(Rec.GenerateIRNOutPutResponseReadAsText('', TEXTENCODING::UTF8));
+                    if not Rec."C_IRN Sent Request".HasValue then
+                        exit;
+                    MESSAGE(Rec.CancelIRNSentResponseReadAsText('', TEXTENCODING::UTF8));
+                    Rec."C_IRN Sent Request".CreateInStream(Instrm);
+                    FileName := Rec."No." + '_Cancel Request Payload' + '.txt';
+                    DownloadFromStream(Instrm, 'Export', '', 'All Files (*.*)|*.*', FileName);
                 end;
             }
             action("Cancel IRN OutPut Request")
             {
                 ApplicationArea = All;
                 Promoted = true;
+                Enabled = CancelIRNOutput;
                 trigger OnAction()
                 begin
                     Rec.CALCFIELDS("C_IRN Output Response");
-                    MESSAGE(Rec.GenerateIRNOutPutResponseReadAsText('', TEXTENCODING::UTF8));
+                    if not Rec."C_IRN Output Response".HasValue then
+                        exit;
+                    MESSAGE(Rec.CancelIRNOutPutResponseReadAsText('', TEXTENCODING::UTF8));
+                    Rec."C_IRN Output Response".CreateInStream(Instrm);
+                    FileName := Rec."No." + '_Cancel Output Payload' + '.txt';
+                    DownloadFromStream(Instrm, 'Export', '', 'All Files (*.*)|*.*', FileName);
                 end;
             }
 
@@ -177,20 +167,64 @@ page 50312 "E-Invoice Log"
             {
                 ApplicationArea = All;
                 Promoted = true;
+                Enabled = GEWbSendRequest;
                 trigger OnAction()
                 begin
                     Rec.CALCFIELDS("G_E-Way bill Sent Request");
-                    MESSAGE(Rec.GenerateIRNOutPutResponseReadAsText('', TEXTENCODING::UTF8));
+                    if not Rec."G_E-Way bill Sent Request".HasValue then
+                        exit;
+                    MESSAGE(Rec.GenerateEWayBillSentResponseReadAsText('', TEXTENCODING::UTF8));
+                    Rec."G_E-Way bill Sent Request".CreateInStream(Instrm);
+                    FileName := Rec."No." + '_E-Way Bill Request' + '.txt';
+                    DownloadFromStream(Instrm, 'Export', '', 'All Files (*.*)|*.*', FileName);
                 end;
             }
             action("Generate E-Way bill Output Request")
             {
                 ApplicationArea = All;
                 Promoted = true;
+                Enabled = GEWbOutPutRequest;
                 trigger OnAction()
                 begin
                     Rec.CALCFIELDS("G_E-Way bill Output Response");
-                    MESSAGE(Rec.GenerateIRNOutPutResponseReadAsText('', TEXTENCODING::UTF8));
+                    if not Rec."G_E-Way bill Output Response".HasValue then
+                        exit;
+                    MESSAGE(Rec.GenerateEWayBillOutPutResponseReadAsText('', TEXTENCODING::UTF8));
+                    Rec."G_E-Way bill Output Response".CreateInStream(Instrm);
+                    FileName := Rec."No." + '_E-Way bill Output' + '.txt';
+                    DownloadFromStream(Instrm, 'Export', '', 'All Files (*.*)|*.*', FileName);
+                end;
+            }
+            action("Cancel E-Way bill Sent Request")
+            {
+                ApplicationArea = All;
+                Promoted = true;
+                Enabled = CancelEWBSent;
+                trigger OnAction()
+                begin
+                    Rec.CALCFIELDS("E-Way Bill Cancel Request");
+                    if not Rec."E-Way Bill Cancel Request".HasValue then
+                        exit;
+                    MESSAGE(Rec.CancelEWayBillSentResponseReadAsText('', TEXTENCODING::UTF8));
+                    Rec."E-Way Bill Cancel Request".CreateInStream(Instrm);
+                    FileName := Rec."No." + '_Cancel E-Way Bill Request' + '.txt';
+                    DownloadFromStream(Instrm, 'Export', '', 'All Files (*.*)|*.*', FileName);
+                end;
+            }
+            action("Cancel E-Way bill Output Request")
+            {
+                ApplicationArea = All;
+                Promoted = true;
+                Enabled = CancelEWBOutput;
+                trigger OnAction()
+                begin
+                    Rec.CALCFIELDS("E-Way Bill Cancel Output");
+                    if not Rec."E-Way Bill Cancel Output".HasValue then
+                        exit;
+                    MESSAGE(Rec.CancelEWayBillOutPutResponseReadAsText('', TEXTENCODING::UTF8));
+                    Rec."E-Way Bill Cancel Output".CreateInStream(Instrm);
+                    FileName := Rec."No." + '_Cancel E-Way bill Output' + '.txt';
+                    DownloadFromStream(Instrm, 'Export', '', 'All Files (*.*)|*.*', FileName);
                 end;
             }
         }
@@ -200,13 +234,61 @@ page 50312 "E-Invoice Log"
     var
         SendResponse: Text;
         OutputResPonse: Text;
+        Instrm: InStream;
+        FileName: Text;
+        GEWbSendRequest: Boolean;
+        GEWbOutPutRequest: Boolean;
+        GIRNSent: Boolean;
+        GIRNOutput: Boolean;
+        CancelEWBSent: Boolean;
+        CancelEWBOutput: Boolean;
+        CancelIRNSent: Boolean;
+        CancelIRNOutput: Boolean;
 
     trigger OnAfterGetRecord()
     var
         myInt: Integer;
     begin
-        SendResponse := Rec.SendResponse();
-        OutputResPonse := Rec.GetAPIResponse();
+        Rec.CalcFields("G_E-Way bill Sent Request");
+        if not Rec."G_E-Way bill Sent Request".HasValue then
+            GEWbSendRequest := false
+        else
+            GEWbSendRequest := true;
+        Rec.CalcFields("G_E-Way bill Output Response");
+        if not Rec."G_E-Way bill Output Response".HasValue then
+            GEWbOutPutRequest := false
+        else
+            GEWbOutPutRequest := true;
+        Rec.CalcFields("G_IRN Sent Request");
+        if not Rec."G_IRN Sent Request".HasValue then
+            GIRNSent := false
+        else
+            GIRNSent := true;
+        Rec.CalcFields("G_IRN Output Response");
+        if not Rec."G_IRN Output Response".HasValue then
+            GIRNOutput := false
+        else
+            GIRNOutput := true;
+        Rec.CalcFields("C_IRN Sent Request");
+        if not Rec."C_IRN Sent Request".HasValue then
+            CancelIRNSent := false
+        else
+            CancelIRNSent := true;
+        Rec.CalcFields("C_IRN Output Response");
+        if not Rec."C_IRN Output Response".HasValue then
+            CancelIRNOutput := false
+        else
+            CancelIRNOutput := true;
+        Rec.CalcFields("E-Way Bill Cancel Request");
+        if not Rec."E-Way Bill Cancel Request".HasValue then
+            CancelEWBSent := false
+        else
+            CancelEWBSent := true;
+        Rec.CalcFields("E-Way Bill Cancel Output");
+        if not Rec."E-Way Bill Cancel Output".HasValue then
+            CancelEWBOutput := false
+        else
+            CancelEWBOutput := true;
 
     end;
 

@@ -1,5 +1,6 @@
 codeunit 50150 "E-Invoice Generation"
 { // Need To Assgin Round Gl Value
+  // OthCharges And Discount Value Pass either header Part Or Either Item List Part(Both Header and Item List Part Pass Value Not applicale)
     trigger OnRun()
     begin
     end;
@@ -393,7 +394,7 @@ codeunit 50150 "E-Invoice Generation"
                 if Buyr_State.get(Buyr_SalesInvoiceHeader."GST Bill-to State Code") then
                     B_StateCode := Buyr_State."State Code for E-Invoicing";
             end;
-            BPhNo := Buyr_SalesInvoiceHeader."Bill-to Contact No.";
+            BPhNo := '';
             BEmail := '';
         end;
         if Buyr_SalesCrMemoHeader.get(DocumentNo) then begin
@@ -420,7 +421,7 @@ codeunit 50150 "E-Invoice Generation"
                 if Buyr_State.get(Buyr_SalesCrMemoHeader."GST Bill-to State Code") then
                     B_StateCode := Buyr_State."State Code for E-Invoicing";
             end;
-            BPhNo := Buyr_SalesCrMemoHeader."Bill-to Contact No.";
+            BPhNo := '';
             BEmail := '';
         end;
         if Buyr_TransfershipmentHeader.Get(DocumentNo) then begin
@@ -619,6 +620,7 @@ codeunit 50150 "E-Invoice Generation"
         TotalInvValueFC: Decimal;
         DiscountAmt: Decimal;
         RoundOffAmt: Decimal;
+        TCSEntry: Record "TCS Entry";
     begin
         Val_DetailedGSTEntry.RESET;
         Val_DetailedGSTEntry.SETRANGE("Document No.", DocNo);
@@ -648,6 +650,9 @@ codeunit 50150 "E-Invoice Generation"
             TotalInvValue := abs(Val_CustLedgerEntry."Original Amt. (LCY)");
             TotalInvValueFC := abs(Val_CustLedgerEntry.Amount);
         end;
+        TCSEntry.Reset();
+        TCSEntry.SetRange("Document No.", DocNo);
+        TCSEntry.CalcSums("Total TCS Including SHE CESS");
         case
           DocumentType of
             DocumentType::Invoice:
@@ -692,11 +697,11 @@ codeunit 50150 "E-Invoice Generation"
                     RoundOffAmt := abs(Val_TransferShipmentLine.Amount);
                 end;
         end;
-        WriteValDetails(JRedValueDtls, GSTBaseAmt, CGSTAmt, SGSTAmt, IGSTAmt, TotalInvValue, RoundOffAmt, TotalInvValueFC, DiscountAmt);
+        WriteValDetails(JRedValueDtls, GSTBaseAmt, CGSTAmt, SGSTAmt, IGSTAmt, TotalInvValue, RoundOffAmt, TotalInvValueFC, 0, 0);
     end;
 
     local procedure WriteValDetails(var JWriteValValue: JsonObject; GSTBaseAmt: Decimal; CGSTAmt: Decimal; SGSTAmt: Decimal; IGSTAmt: Decimal;
-        TotalInvValue: Decimal; RoundOffAmt: Decimal; TotalInvValueFC: Decimal; DiscountAmt: Decimal)
+        TotalInvValue: Decimal; RoundOffAmt: Decimal; TotalInvValueFC: Decimal; DiscountAmt: Decimal; OthCharges: Decimal)
     var
         JWritevalDtls: JsonObject;
     begin
@@ -710,7 +715,7 @@ codeunit 50150 "E-Invoice Generation"
         JWritevalDtls.Add('RoundOfAmt', ReturnStr(RoundAmt(RoundOffAmt)));
         JWritevalDtls.Add('TotalInvValueFc', ReturnStr(RoundAmt(TotalInvValueFC)));
         JWritevalDtls.Add('Discount', ReturnStr(RoundAmt(DiscountAmt)));
-        JWritevalDtls.Add('OthCharge', 0);
+        JWritevalDtls.Add('OthCharge', ReturnStr(RoundAmt(OthCharges)));
         JWriteValValue.Add('TpApiValDtls', JWritevalDtls);
     end;
 
@@ -738,6 +743,7 @@ codeunit 50150 "E-Invoice Generation"
         IGSTAmtLine: Decimal;
         TotalItemValue: Decimal;
         JItemArray: JsonArray;
+        OthCharges: Decimal;
     begin
         SiNo := 0;
         JReadItemValue.Add('TpApiItemList', JItemArray);
@@ -772,9 +778,10 @@ codeunit 50150 "E-Invoice Generation"
                             GetGSTValueForLine(Item_SalesInvoiceLine."Document No.", Item_SalesInvoiceLine."Line No.", GSTBaseAmtLine, SGSTAmtLine, GSTPer,
                                 CGSTAmtLine, IGSTAmtLine);
 
+                            OthCharges := GetTCSAmount(Item_SalesInvoiceLine."Document No.", Item_SalesInvoiceLine."Line No.", 2);
                             TotalItemValue := abs(GSTBaseAmtLine + SGSTAmtLine + CGSTAmtLine + IGSTAmtLine + GetTCSAmount(Item_SalesInvoiceLine."Document No.", Item_SalesInvoiceLine."Line No.", 2));
                             WriteItemList(JItemArray, SiNo, ProductDesc, ProductDesc2, IsService, HSNCode, Quantity, 0, UOM, UnitPrice, TotalAmt, LineDiscountAmt, GSTBaseAmtLine,
-                                GSTPer, SGSTAmtLine, CGSTAmtLine, IGSTAmtLine, TotalItemValue);
+                                GSTPer, SGSTAmtLine, CGSTAmtLine, IGSTAmtLine, TotalItemValue, OthCharges);
                         until Item_SalesInvoiceLine.Next() = 0;
                 end;
             DocumentType::"Credit Memo":
@@ -805,10 +812,10 @@ codeunit 50150 "E-Invoice Generation"
                             LineDiscountAmt := abs(Item_SalesCreditMemoLine."Line Discount Amount" / CuurencyFactor);
                             GetGSTValueForLine(Item_SalesCreditMemoLine."Document No.", Item_SalesCreditMemoLine."Line No.", GSTBaseAmtLine, SGSTAmtLine, GSTPer,
                                 CGSTAmtLine, IGSTAmtLine);
-
+                            OthCharges := GetTCSAmount(Item_SalesCreditMemoLine."Document No.", Item_SalesCreditMemoLine."Line No.", 3);
                             TotalItemValue := abs(GSTBaseAmtLine + SGSTAmtLine + CGSTAmtLine + IGSTAmtLine + GetTCSAmount(Item_SalesCreditMemoLine."Document No.", Item_SalesCreditMemoLine."Line No.", 3));
                             WriteItemList(JItemArray, SiNo, ProductDesc, ProductDesc2, IsService, HSNCode, Quantity, 0, UOM, UnitPrice, TotalAmt, LineDiscountAmt, GSTBaseAmtLine,
-                                GSTPer, SGSTAmtLine, CGSTAmtLine, IGSTAmtLine, TotalItemValue);
+                                GSTPer, SGSTAmtLine, CGSTAmtLine, IGSTAmtLine, TotalItemValue, OthCharges);
                         until Item_SalesCreditMemoLine.Next() = 0;
                 end;
             DocumentType::"Transfer Shipment":
@@ -836,10 +843,10 @@ codeunit 50150 "E-Invoice Generation"
                             LineDiscountAmt := 0;
                             GetGSTValueForLine(Item_TranferShipmentLine."Document No.", Item_TranferShipmentLine."Line No.", GSTBaseAmtLine, SGSTAmtLine, GSTPer,
                                 CGSTAmtLine, IGSTAmtLine);
-
+                            OthCharges := 0;
                             TotalItemValue := abs(GSTBaseAmtLine + SGSTAmtLine + CGSTAmtLine + IGSTAmtLine);
                             WriteItemList(JItemArray, SiNo, ProductDesc, ProductDesc2, IsService, HSNCode, Quantity, 0, UOM, UnitPrice, TotalAmt, LineDiscountAmt, GSTBaseAmtLine,
-                                GSTPer, SGSTAmtLine, CGSTAmtLine, IGSTAmtLine, TotalItemValue);
+                                GSTPer, SGSTAmtLine, CGSTAmtLine, IGSTAmtLine, TotalItemValue, OthCharges);
                         until Item_TranferShipmentLine.Next() = 0;
                 end;
         end;
@@ -847,7 +854,7 @@ codeunit 50150 "E-Invoice Generation"
 
     local procedure WriteItemList(var JWriteItemArray: JsonArray; SiNo: Integer; ProductDesc: Text[100]; ProductDesc2: Text[50]; IsService: Text[10];
         HSNCode: Code[10]; Quantity: Decimal; FreeQuantity: Decimal; UOM: Code[10]; UnitPrice: Decimal; TotalAmt: Decimal; LineDiscountAmt: Decimal;
-        GSTBaseAmtLine: Decimal; GSTPer: Decimal; SGSTAmtLine: Decimal; CGSTAmtLine: Decimal; IGSTAmtLine: Decimal; TotalItemValue: Decimal)
+        GSTBaseAmtLine: Decimal; GSTPer: Decimal; SGSTAmtLine: Decimal; CGSTAmtLine: Decimal; IGSTAmtLine: Decimal; TotalItemValue: Decimal; OthCharges: Decimal)
     var
         JwriteItem: JsonObject;
         JSonNull: JsonValue;
@@ -865,7 +872,7 @@ codeunit 50150 "E-Invoice Generation"
         JwriteItem.Add('TotAmount', ReturnStr(RoundAmt(TotalAmt)));
         JwriteItem.Add('Discount', ReturnStr(RoundAmt(LineDiscountAmt)));
         JwriteItem.Add('PreTaxableVal', ReturnStr(RoundAmt(GSTBaseAmtLine)));
-        JwriteItem.Add('OtherCharges', 0);
+        JwriteItem.Add('OtherCharges', ReturnStr(RoundAmt(OthCharges)));
         JwriteItem.Add('AssAmount', ReturnStr(RoundAmt(GSTBaseAmtLine)));
         JwriteItem.Add('GstRate', ReturnStr(RoundAmt(GSTPer)));
         JwriteItem.Add('SgstAmt', ReturnStr(RoundAmt(SGSTAmtLine)));
@@ -1139,7 +1146,8 @@ codeunit 50150 "E-Invoice Generation"
                             else
                                 EInvoiceLog."IRN Status" := EInvoiceLog."IRN Status"::Failed;
                             EInvoiceLog."Error Message" := ErrorMessage;
-                            EInvoiceLog."Current Date Time" := AckDate;
+                            EInvoiceLog."Acknowledge Date" := AckDate;
+                            EInvoiceLog."Current Date Time" := CurrentDateTime;
                             EInvoiceLog."Acknowledge No." := AckNo;
                             CLEAR(RequestResponse);
                             RequestResponse.ADDTEXT(JsonPayload);
@@ -1196,7 +1204,8 @@ codeunit 50150 "E-Invoice Generation"
                                 EInvoiceLog."IRN Status" := EInvoiceLog."IRN Status"::Submitted
                             else
                                 EInvoiceLog."IRN Status" := EInvoiceLog."IRN Status"::Failed;
-                            EInvoiceLog."Current Date Time" := AckDate;
+                            EInvoiceLog."Acknowledge Date" := AckDate;
+                            EInvoiceLog."Current Date Time" := CurrentDateTime;
                             EInvoiceLog."Error Message" := ErrorMessage;
                             EInvoiceLog."Acknowledge No." := AckNo;
                             CLEAR(RequestResponse);
@@ -1254,7 +1263,8 @@ codeunit 50150 "E-Invoice Generation"
                                 EInvoiceLog."IRN Status" := EInvoiceLog."IRN Status"::Submitted
                             else
                                 EInvoiceLog."IRN Status" := EInvoiceLog."IRN Status"::Failed;
-                            EInvoiceLog."Current Date Time" := AckDate;
+                            EInvoiceLog."Acknowledge Date" := AckDate;
+                            EInvoiceLog."Current Date Time" := CurrentDateTime;
                             EInvoiceLog."Error Message" := ErrorMessage;
                             EInvoiceLog."Acknowledge No." := AckNo;
                             CLEAR(RequestResponse);
@@ -1305,6 +1315,7 @@ codeunit 50150 "E-Invoice Generation"
         CancelDateText: Text;
         YearCode: Integer;
         MonthCode: Integer;
+        CancelBody: Text;
         DayCode: Integer;
         CancelDateTime: DateTime;
         CnCl_SalesInvoiceHeader: Record "Sales Invoice Header";
@@ -1314,6 +1325,14 @@ codeunit 50150 "E-Invoice Generation"
         ErrorMessage: Text;
         IrnCancel: Boolean;
     begin
+        EInvoiceSetUp.Get();
+        G_Client_ID := EInvoiceSetup."Client ID";
+        G_Client_Secret := EInvoiceSetup."Client Secret";
+        G_IP_Address := EInvoiceSetup."IP Address";
+        G_Round_GL_Account_1 := EInvoiceSetup."Round GL Account 1";
+        G_Round_GL_Account_2 := EInvoiceSetup."Round GL Account 2";
+        G_Authenticate_URL := EInvoiceSetup."Authentication URL";
+        G_E_Invoice_URL := EInvoiceSetup."E-Invoice URl";
         IrnCancel := false;
         ErrorMessage := '';
         IRNNo := '';
@@ -1337,8 +1356,8 @@ codeunit 50150 "E-Invoice Generation"
                 end;
         end;
         AuthenticateToken(GSTRegistrationNos.Code);
-        EInvoiceSetUp.Get();
-        EinvoiceHttpContent.WriteFrom(CancelIRNBody(DocNo, DocumentType));
+        CancelIRNBody(DocNo, DocumentType, CancelBody);
+        EinvoiceHttpContent.WriteFrom(CancelBody);
         EinvoiceHttpContent.GetHeaders(EinvoiceHttpHeader);
         EinvoiceHttpHeader.Clear();
         EinvoiceHttpHeader.Add('client_id', EInvoiceSetUp."Client ID");
@@ -1388,12 +1407,15 @@ codeunit 50150 "E-Invoice Generation"
                         E_InvoiceLog.SetRange("No.", DocNo);
                         E_InvoiceLog.SetRange("IRN Status", E_InvoiceLog."IRN Status"::Submitted);
                         if E_InvoiceLog.FindFirst() then begin
-                            if IrnCancel then
-                                E_InvoiceLog."IRN Status" := E_InvoiceLog."IRN Status"::Cancelled
-                            else
+                            if IrnCancel then begin
+                                E_InvoiceLog."IRN Status" := E_InvoiceLog."IRN Status"::Cancelled;
+                                E_InvoiceLog."IRN Hash" := IRNNo;
+                                E_InvoiceLog."Irn Cancel Date Time" := CancelDateTime;
+                            end else
                                 E_InvoiceLog."IRN Status" := E_InvoiceLog."IRN Status"::"Cancel Failed";
+
                             CLEAR(RequestResponse);
-                            RequestResponse.ADDTEXT(CancelIRNBody(DocNo, DocumentType));
+                            RequestResponse.ADDTEXT(CancelBody);
                             E_InvoiceLog."C_IRN Sent Request".CREATEOUTSTREAM(OutStrm);
                             RequestResponse.WRITE(OutStrm);
 
@@ -1401,15 +1423,17 @@ codeunit 50150 "E-Invoice Generation"
                             RequestResponse.ADDTEXT(ResultMessage);
                             E_InvoiceLog."C_IRN Output Response".CREATEOUTSTREAM(OutStrm);
                             RequestResponse.WRITE(OutStrm);
-                            E_InvoiceLog."IRN Hash" := IRNNo;
-                            E_InvoiceLog."Irn Cancel Date Time" := CancelDateTime;
+
+                            E_InvoiceLog."Current Date Time" := CurrentDateTime;
                             E_InvoiceLog."Error Message" := ErrorMessage;
                             E_InvoiceLog.Modify();
                         end;
                         if CnCl_SalesInvoiceHeader.get(DocNo) then begin
-                            CnCl_SalesInvoiceHeader."IRN Hash" := IRNNo;
-                            CnCl_SalesInvoiceHeader."Irn Cancel DateTime" := CancelDateTime;
-                            CnCl_SalesInvoiceHeader.Modify();
+                            if IrnCancel then begin
+                                CnCl_SalesInvoiceHeader."IRN Hash" := IRNNo;
+                                CnCl_SalesInvoiceHeader."Irn Cancel DateTime" := CancelDateTime;
+                                CnCl_SalesInvoiceHeader.Modify();
+                            end;
                         end;
                     end;
                 DocumentType::"Credit Memo":
@@ -1419,14 +1443,17 @@ codeunit 50150 "E-Invoice Generation"
                         E_InvoiceLog.SetRange("No.", DocNo);
                         E_InvoiceLog.SetRange("IRN Status", E_InvoiceLog."IRN Status"::Submitted);
                         if E_InvoiceLog.FindFirst() then begin
-                            if IrnCancel then
-                                E_InvoiceLog."IRN Status" := E_InvoiceLog."IRN Status"::Cancelled
-                            else
+                            if IrnCancel then begin
+                                E_InvoiceLog."IRN Status" := E_InvoiceLog."IRN Status"::Cancelled;
+                                E_InvoiceLog."IRN Hash" := IRNNo;
+                                E_InvoiceLog."Irn Cancel Date Time" := CancelDateTime;
+                            end else
                                 E_InvoiceLog."IRN Status" := E_InvoiceLog."IRN Status"::"Cancel Failed";
-                            E_InvoiceLog."IRN Hash" := IRNNo;
-                            E_InvoiceLog."Irn Cancel Date Time" := CancelDateTime;
+
+
+                            E_InvoiceLog."Current Date Time" := CurrentDateTime;
                             CLEAR(RequestResponse);
-                            RequestResponse.ADDTEXT(CancelIRNBody(DocNo, DocumentType));
+                            RequestResponse.ADDTEXT(CancelBody);
                             E_InvoiceLog."C_IRN Sent Request".CREATEOUTSTREAM(OutStrm);
                             RequestResponse.WRITE(OutStrm);
 
@@ -1437,9 +1464,11 @@ codeunit 50150 "E-Invoice Generation"
                             E_InvoiceLog.Modify();
                         end;
                         if CnCl_SalesCrMemoHeader.get(DocNo) then begin
-                            CnCl_SalesCrMemoHeader."IRN Hash" := IRNNo;
-                            CnCl_SalesCrMemoHeader."Irn Cancel DateTime" := CancelDateTime;
-                            CnCl_SalesCrMemoHeader.Modify();
+                            if IrnCancel then begin
+                                CnCl_SalesCrMemoHeader."IRN Hash" := IRNNo;
+                                CnCl_SalesCrMemoHeader."Irn Cancel DateTime" := CancelDateTime;
+                                CnCl_SalesCrMemoHeader.Modify();
+                            end;
                         end;
                     end;
                 DocumentType::"Transfer Shipment":
@@ -1449,13 +1478,15 @@ codeunit 50150 "E-Invoice Generation"
                         E_InvoiceLog.SetRange("No.", DocNo);
                         E_InvoiceLog.SetRange("IRN Status", E_InvoiceLog."IRN Status"::Submitted);
                         if E_InvoiceLog.FindFirst() then begin
-                            if IrnCancel then
-                                E_InvoiceLog."IRN Status" := E_InvoiceLog."IRN Status"::Cancelled
-                            else
+                            if IrnCancel then begin
+                                E_InvoiceLog."IRN Status" := E_InvoiceLog."IRN Status"::Cancelled;
+                                E_InvoiceLog."IRN Hash" := IRNNo;
+                                E_InvoiceLog."Irn Cancel Date Time" := CancelDateTime;
+                            end else
                                 E_InvoiceLog."IRN Status" := E_InvoiceLog."IRN Status"::"Cancel Failed";
-                            E_InvoiceLog."IRN Hash" := IRNNo;
+
                             CLEAR(RequestResponse);
-                            RequestResponse.ADDTEXT(CancelIRNBody(DocNo, DocumentType));
+                            RequestResponse.ADDTEXT(CancelBody);
                             E_InvoiceLog."C_IRN Sent Request".CREATEOUTSTREAM(OutStrm);
                             RequestResponse.WRITE(OutStrm);
 
@@ -1467,9 +1498,11 @@ codeunit 50150 "E-Invoice Generation"
                             E_InvoiceLog.Modify();
                         end;
                         if CnCl_TransferShipmentHeader.get(DocNo) then begin
-                            CnCl_TransferShipmentHeader."IRN Hash" := IRNNo;
-                            CnCl_TransferShipmentHeader."Irn Cancel DateTime" := CancelDateTime;
-                            CnCl_TransferShipmentHeader.Modify();
+                            if IrnCancel then begin
+                                CnCl_TransferShipmentHeader."IRN Hash" := IRNNo;
+                                CnCl_TransferShipmentHeader."Irn Cancel DateTime" := CancelDateTime;
+                                CnCl_TransferShipmentHeader.Modify();
+                            end;
                         end;
                     end;
             end;
@@ -1477,7 +1510,7 @@ codeunit 50150 "E-Invoice Generation"
             Message(Team001);
     end;
 
-    local procedure CancelIRNBody(DocNo: Code[20]; DocumentType: Option " ",Invoice,"Credit Memo","Transfer Shipment") CnclBody: Text;
+    local procedure CancelIRNBody(DocNo: Code[20]; DocumentType: Option " ",Invoice,"Credit Memo","Transfer Shipment"; var CnclBody: Text)
     var
         Cncl_IRNPayload: JsonObject;
         Cncl_SalesInvoiceHeader: Record "Sales Invoice Header";
@@ -1497,7 +1530,7 @@ codeunit 50150 "E-Invoice Generation"
                         Cncl_IRNPayload.Add('CancelReason', (GetCancelReasonSaleInvHeader(Cncl_SalesInvoiceHeader)));
                         Cncl_IRNPayload.Add('CancelRemarks', Format(Cncl_SalesInvoiceHeader."Cancel Remarks"));
                         Cncl_IRNPayload.WriteTo(CnclBody);
-                        exit(CnclBody);
+
                     end;
                 end;
             DocumentType::"Credit Memo":
@@ -1511,7 +1544,7 @@ codeunit 50150 "E-Invoice Generation"
                         Cncl_IRNPayload.Add('CancelReason', (GetCancelReasonSalesCrMemoHeader(Cncl_SalesCrMemoHeader)));
                         Cncl_IRNPayload.Add('CancelRemarks', Format(Cncl_SalesCrMemoHeader."Cancel Remarks"));
                         Cncl_IRNPayload.WriteTo(CnclBody);
-                        exit(CnclBody);
+
                     end;
                 end;
             DocumentType::"Transfer Shipment":
@@ -1525,7 +1558,7 @@ codeunit 50150 "E-Invoice Generation"
                         Cncl_IRNPayload.Add('CancelReason', (GetCancelReasonTrnsShpemntHeader(Cncl_TransferShipment)));
                         Cncl_IRNPayload.Add('CancelRemarks', Format(Cncl_TransferShipment."Cancel Remarks"));
                         Cncl_IRNPayload.WriteTo(CnclBody);
-                        exit(CnclBody);
+
                     end;
                 end;
         end;
@@ -1628,4 +1661,6 @@ codeunit 50150 "E-Invoice Generation"
     begin
         exit(Round(Amt, 0.01, '='))
     end;
+
+
 }

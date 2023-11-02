@@ -14,6 +14,10 @@ tableextension 50155 EInvSalesInvoiceHeader extends "Sales Invoice Header"
         {
             DataClassification = ToBeClassified;
         }
+        field(50153; "E-Way Bill Cancel DateTime"; DateTime)
+        {
+            DataClassification = ToBeClassified;
+        }
     }
 
     var

@@ -37,6 +37,22 @@ table 50100 "E-Invoice Set Up"
         {
             DataClassification = ToBeClassified;
         }
+        field(13; "Private Key"; Text[100])
+        {
+            DataClassification = ToBeClassified;
+        }
+        field(14; "Private Value"; Text[100])
+        {
+            DataClassification = ToBeClassified;
+        }
+        field(15; "Private IP"; Text[100])
+        {
+            DataClassification = ToBeClassified;
+        }
+        field(16; "Cancel E-Way Bill URL"; Text[100])
+        {
+            DataClassification = ToBeClassified;
+        }
     }
 
     keys

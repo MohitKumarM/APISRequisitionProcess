@@ -13,11 +13,6 @@ page 50150 "E-Invoice Setup"
         {
             group("E-Invoice Setup")
             {
-
-                field("Authentication URL"; Rec."Authentication URL")
-                {
-                    ToolTip = 'Specifies the value of the Authentication URL field.';
-                }
                 field("Client ID"; Rec."Client ID")
                 {
                     ToolTip = 'Specifies the value of the Client ID field.';
@@ -26,18 +21,36 @@ page 50150 "E-Invoice Setup"
                 {
                     ToolTip = 'Specifies the value of the Client Secret field.';
                 }
-                field("E-Invoice URl"; Rec."E-Invoice URl")
-                {
-                    ToolTip = 'Specifies the value of the E-Invoice URl field.';
-                }
                 field("IP Address"; Rec."IP Address")
                 {
                     ToolTip = 'Specifies the value of the IP Address field.';
                 }
-                field(Primary; Rec.Primary)
+                field("Authentication URL"; Rec."Authentication URL")
                 {
-                    ToolTip = 'Specifies the value of the Primary field.';
+                    ToolTip = 'Specifies the value of the Authentication URL field.';
                 }
+
+                field("E-Invoice URl"; Rec."E-Invoice URl")
+                {
+                    ToolTip = 'Specifies the value of the E-Invoice URl field.';
+                }
+                field("Private Key"; Rec."Private Key")
+                {
+                    ApplicationArea = all;
+                }
+                field("Private Value"; Rec."Private Value")
+                {
+                    ApplicationArea = all;
+                }
+                field("Private IP"; Rec."Private IP")
+                {
+                    ApplicationArea = all;
+                }
+                field("Cancel E-Way Bill URL"; Rec."Cancel E-Way Bill URL")
+                {
+                    ApplicationArea = all;
+                }
+
                 field("Round GL Account 1"; Rec."Round GL Account 1")
                 {
                     ToolTip = 'Specifies the value of the Round GL Account 1 field.';

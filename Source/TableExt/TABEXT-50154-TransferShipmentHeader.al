@@ -40,6 +40,10 @@ tableextension 50154 EInvTransferShipmentHeader extends "Transfer Shipment Heade
             Caption = 'E-Way Bill No.';
             DataClassification = CustomerContent;
         }
+        field(50159; "E-Way Bill Cancel DateTime"; DateTime)
+        {
+            DataClassification = ToBeClassified;
+        }
     }
 
     var
