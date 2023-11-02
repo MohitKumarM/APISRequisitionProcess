@@ -6,7 +6,6 @@ enum 50150 "Cancel Remarks"
     {
         Caption = ' ';
     }
-
     value(1; "Duplicate")
     {
         Caption = 'Duplicate';
