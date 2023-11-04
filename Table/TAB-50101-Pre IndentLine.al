@@ -92,7 +92,7 @@ table 50101 "Pre Indent Line"
         {
             DataClassification = CustomerContent;
         }
-         field(10; "Purchase Created"; Boolean)
+        field(10; "Purchase Created"; Boolean)
         {
             DataClassification = CustomerContent;
         }
@@ -100,7 +100,7 @@ table 50101 "Pre Indent Line"
         {
             DataClassification = CustomerContent;
         }
-         field(12; "PO Line No"; Integer)
+        field(12; "PO Line No"; Integer)
         {
             DataClassification = CustomerContent;
         }
@@ -117,8 +117,11 @@ table 50101 "Pre Indent Line"
             DataClassification = CustomerContent;
             trigger OnValidate()
             begin
-                if "Approved Qty" > Quantity then
-                    Error('Approved Quantity must be less than quantity');
+                // if "Approved Qty" > Quantity then
+                //     Error('Approved Quantity must be less than quantity');
+
+                IF (Rec."Approved Qty" <> Rec.Quantity) then
+                    Rec.TestField(Reamrk);
             end;
         }
 
@@ -181,10 +184,11 @@ table 50101 "Pre Indent Line"
             DataClassification = CustomerContent;
             TableRelation = if (type = filter(Item), "PM Item Type" = Filter(Label)) "Substrate-Paper Quality Master".Code where(Type = filter(Substrate));
         }
-       
+
         field(31; "PM Item Type"; Option)
         {
             OptionMembers = Blank,Bottle,Cap,Label,Carton,Pouch;
+            Editable = false;
         }
         field(32; Length; Decimal)
         {

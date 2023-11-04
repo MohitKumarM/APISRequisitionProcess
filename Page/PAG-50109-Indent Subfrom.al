@@ -23,14 +23,14 @@ page 50109 "Indent Subform"
                 {
                     ApplicationArea = All;
                     ToolTip = 'Specifies the value of the Type field.';
+                    ShowMandatory = true;
                 }
                 field("No."; Rec."No.")
                 {
                     ApplicationArea = All;
                     ToolTip = 'Specifies the value of the No. field.';
+                    ShowMandatory = true;
                 }
-
-
                 field(Description; Rec.Description)
                 {
                     ApplicationArea = All;
@@ -41,25 +41,13 @@ page 50109 "Indent Subform"
                 {
                     ApplicationArea = All;
                     Editable = false;
-
-
                 }
 
                 field(Quantity; Rec.Quantity)
                 {
                     ApplicationArea = All;
                     ToolTip = 'Specifies the value of the Quantity field.';
-                }
-                field("Unit Price"; Rec."Unit Price")
-                {
-
-                    ApplicationArea = All;
-                }
-                field("Approved Qty"; Rec."Approved Qty")
-                {
-                    ApplicationArea = All;
-                    Editable = false;
-                    ToolTip = 'Specifies the value of the Required Quantity field.';
+                    ShowMandatory = true;
                 }
                 field("PM Item Type"; Rec."PM Item Type")
                 {

@@ -91,7 +91,7 @@ table 50111 "Item Forecaste Master"
                 PeriodStartDate: Date;
                 YearInt: Integer;
             begin
-                IF Evaluate(YearInt, Year) then
+                IF not Evaluate(YearInt, Year) then
                     Error('Year must be like - 2023 or 2024');
                 PeriodStartDate := DMY2Date(01, 01, YearInt);
                 Date_Loc.Reset();

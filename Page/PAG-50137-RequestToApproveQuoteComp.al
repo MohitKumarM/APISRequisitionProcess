@@ -20,26 +20,8 @@ page 50137 "Request To Approve Quote Comp"
                     ToolTip = 'Specifies the value of the Select to Approve field.';
                     trigger OnValidate()
                     var
-                        QuoteComparison_Loc: Record "Quote Comparison";
                     begin
-
-                        QuoteComparison_Loc.Reset();
-                        QuoteComparison_Loc.SetRange(Status, QuoteComparison_Loc.Status::"Pending Approval");
-                        if (Rec."Indent No." <> '') then
-                            QuoteComparison_Loc.SetRange("Indent No.", Rec."Indent No.")
-                        else
-                            QuoteComparison_Loc.SetFilter("Indent No.", '');
-                        IF QuoteComparison_Loc.FindSet() then begin
-                            repeat
-                                if Rec."Entry No." <> QuoteComparison_Loc."Entry No." then begin
-                                    QuoteComparison_Loc."Select to Approve" := Rec."Select to Approve";
-                                    QuoteComparison_Loc.Modify();
-                                end;
-                            until QuoteComparison_Loc.Next() = 0;
-                        end;
-                        CurrPage.Update(true);
                     end;
-
                 }
                 field("Indent No."; Rec."Indent No.")
                 {
@@ -186,6 +168,7 @@ page 50137 "Request To Approve Quote Comp"
 
                     QuoteComparision_Loc: Record "Quote Comparison";
                     QuoteComparision_Loc_1: Record "Quote Comparison";
+                    QuoteComparision_Loc_2: Record "Quote Comparison";
                     QuoteComparision_Loc_Temp: Record "Quote Comparison" temporary;
 
                     PostedIndentLines_Loc: Record "Posted Indent Line";
@@ -197,58 +180,12 @@ page 50137 "Request To Approve Quote Comp"
                     if AppEntryIndentEntryno.FindLast then
                         EntryNo := AppEntryIndentEntryno."Entry No.";
 
-                    IF QuoteComparision_Loc_Temp.IsTemporary then
-                        QuoteComparision_Loc_Temp.DeleteAll();
-
                     QuoteComparision_Loc.Reset();
                     QuoteComparision_Loc.SetRange(Status, QuoteComparision_Loc.Status::"Pending Approval");
                     QuoteComparision_Loc.SetRange("Select to Approve", true);
                     QuoteComparision_Loc.SetRange("Approver UserID", UserId);
                     QuoteComparision_Loc.SetRange(Pending, true);
                     IF QuoteComparision_Loc.FindSet() then begin
-                        repeat
-                            If (QuoteComparision_Loc."Indent No." = '') then begin
-                                QuoteComparision_Loc_1.Reset();
-                                QuoteComparision_Loc_1.SetFilter(Status, '%1|%2', QuoteComparision_Loc_1.Status::"Not Qualified", QuoteComparision_Loc_1.Status::"Pending Approval");
-                                QuoteComparision_Loc_1.SetRange(Pending, true);
-                                QuoteComparision_Loc_1.SetRange("Indent No.", 'Blank');
-                                IF QuoteComparision_Loc_1.FindSet() then begin
-                                    repeat
-                                        if not QuoteComparision_Loc_Temp.Get(QuoteComparision_Loc_1."Entry No.") then begin
-                                            QuoteComparision_Loc_Temp.Init();
-                                            QuoteComparision_Loc_Temp."Entry No." := QuoteComparision_Loc_1."Entry No.";
-                                            QuoteComparision_Loc_Temp.Insert();
-                                        end;
-                                    until QuoteComparision_Loc_1.Next() = 0;
-                                end;
-                            end else begin
-                                QuoteComparision_Loc_1.Reset();
-                                QuoteComparision_Loc_1.SetFilter(Status, '%1|%2', QuoteComparision_Loc_1.Status::"Not Qualified", QuoteComparision_Loc_1.Status::"Pending Approval");
-                                QuoteComparision_Loc_1.SetRange(Pending, true);
-                                QuoteComparision_Loc_1.SetRange("Indent No.", QuoteComparision_Loc."Indent No.");
-                                IF QuoteComparision_Loc_1.FindSet() then begin
-                                    repeat
-                                        if not QuoteComparision_Loc_Temp.Get(QuoteComparision_Loc_1."Entry No.") then begin
-                                            QuoteComparision_Loc_Temp.Init();
-                                            QuoteComparision_Loc_Temp."Entry No." := QuoteComparision_Loc_1."Entry No.";
-                                            QuoteComparision_Loc_Temp.Insert();
-                                        end;
-                                    until QuoteComparision_Loc_1.Next() = 0;
-                                end;
-                            end;
-                        until QuoteComparision_Loc.Next() = 0;
-                    end;
-
-                    Clear(QuoteComparision_Loc);
-                    QuoteComparision_Loc_Temp.Reset();
-                    IF QuoteComparision_Loc_Temp.FindSet() then begin
-
-                        QuoteComparision_Loc.Get(QuoteComparision_Loc_Temp."Entry No.");
-                        QuoteComparision_Loc_1.Reset();
-                        QuoteComparision_Loc_1.SetRange(Status, QuoteComparision_Loc_1.Status::"Pending Approval");
-                        iF QuoteComparision_Loc."Indent No." <> '' then
-                            QuoteComparision_Loc_1.SetRange("Indent No.", QuoteComparision_Loc."Indent No.");
-                        IF QuoteComparision_Loc_1.FindFirst() then;
 
                         //>>Mail Header
                         Clear(MailUserIdVar);
@@ -256,7 +193,7 @@ page 50137 "Request To Approve Quote Comp"
                         Clear(CCMailIdList);
                         MailUserid := UserId;
                         VarUserSetup.Reset();
-                        VarUserSetup.SetRange("User ID", QuoteComparision_Loc_1."Sender UserID");
+                        VarUserSetup.SetRange("User ID", QuoteComparision_Loc."Sender UserID");
                         if VarUserSetup.FindFirst() then begin
                             approveremail := VarUserSetup."E-Mail";
                             MailUserIdVar.Add(approveremail);
@@ -295,46 +232,41 @@ page 50137 "Request To Approve Quote Comp"
                         //<<Mail Header
 
                         repeat
-                            IF QuoteComparision_Loc.Get(QuoteComparision_Loc_Temp."Entry No.") and (QuoteComparision_Loc.Status = QuoteComparision_Loc.Status::"Pending Approval") then begin
-                                ApprovalEntryIndent.Init;
-                                EntryNo += 1;
-                                ApprovalEntryIndent."Entry No." := EntryNo;
-                                ApprovalEntryIndent."Quote Comparison Entry No." := QuoteComparision_Loc."Entry No.";
-                                ApprovalEntryIndent."Approver UserID" := UserId;
-                                ApprovalEntryIndent."Approval DateTime" := CurrentDateTime;
-                                ApprovalEntryIndent.Status := ApprovalEntryIndent.Status::Approved;
-                                ApprovalEntryIndent."Sent for approval" := false;
-                                ApprovalEntryIndent.Insert;
+                            ApprovalEntryIndent.Init;
+                            EntryNo += 1;
+                            ApprovalEntryIndent."Entry No." := EntryNo;
+                            ApprovalEntryIndent."Quote Comparison Entry No." := QuoteComparision_Loc."Entry No.";
+                            ApprovalEntryIndent."Approver UserID" := UserId;
+                            ApprovalEntryIndent."Approval DateTime" := CurrentDateTime;
+                            ApprovalEntryIndent.Status := ApprovalEntryIndent.Status::Approved;
+                            ApprovalEntryIndent."Sent for approval" := false;
+                            ApprovalEntryIndent.Insert;
 
+                            QuoteComparision_Loc.Status := QuoteComparision_Loc.Status::Approved;
+                            QuoteComparision_Loc.Pending := false;
+                            QuoteComparision_Loc."Select to Approve" := false;
+                            QuoteComparision_Loc.Modify();
 
-                                QuoteComparision_Loc.Status := QuoteComparision_Loc.Status::Approved;
-                                QuoteComparision_Loc.Pending := false;
-                                QuoteComparision_Loc."Select to Approve" := false;
-                                QuoteComparision_Loc.Modify();
+                            //>Mail Body
+                            BodyTxt += '<TR>';
+                            BodyTxt += '<TD>' + Format(QuoteComparision_Loc."Indent No.") + '</TD>';
+                            BodyTxt += '<TD>' + Format(QuoteComparision_Loc."Indent Line No") + '</TD>';
+                            BodyTxt += '<TD>' + Format(QuoteComparision_Loc.Type) + '</TD>';
+                            BodyTxt += '<TD>' + Format(QuoteComparision_Loc.Description) + '</TD>';
+                            BodyTxt += '<TD>' + Format(QuoteComparision_Loc."Vendor Name") + '</TD>';
+                            BodyTxt += '<TD>' + Format(QuoteComparision_Loc."Indent Approved Quantity") + '</TD>';
+                            BodyTxt += '<TD>' + Format(QuoteComparision_Loc."Unit Cost") + '</TD>';
+                            BodyTxt += '<TD>' + Format(QuoteComparision_Loc."PO Qty.") + '</TD>';
+                            BodyTxt += '<TD>' + format(Round(QuoteComparision_Loc."Total PO Qty. Cost", 0.01, '=')) + '</TD>';
+                            BodyTxt += '<TD>' + Format(QuoteComparision_Loc."Entry No.") + '</TD>';
+                            BodyTxt += '<TD>' + Format(QuoteComparision_Loc."Priority No.") + '</TD>';
+                            BodyTxt += '<TD>' + format(QuoteComparision_Loc.Status) + '</TD>';
+                            BodyTxt += '<TD>' + QuoteComparision_Loc."Approver Remarks" + '</TD>';
+                            BodyTxt += '</TR>';
+                        //<<Mail Body                           
 
-                                //>Mail Body
-                                BodyTxt += '<TR>';
-                                BodyTxt += '<TD>' + Format(QuoteComparision_Loc."Indent No.") + '</TD>';
-                                BodyTxt += '<TD>' + Format(QuoteComparision_Loc."Indent Line No") + '</TD>';
-                                BodyTxt += '<TD>' + Format(QuoteComparision_Loc.Type) + '</TD>';
-                                BodyTxt += '<TD>' + Format(QuoteComparision_Loc.Description) + '</TD>';
-                                BodyTxt += '<TD>' + Format(QuoteComparision_Loc."Vendor Name") + '</TD>';
-                                BodyTxt += '<TD>' + Format(QuoteComparision_Loc."Indent Approved Quantity") + '</TD>';
-                                BodyTxt += '<TD>' + Format(QuoteComparision_Loc."Unit Cost") + '</TD>';
-                                BodyTxt += '<TD>' + Format(QuoteComparision_Loc."PO Qty.") + '</TD>';
-                                BodyTxt += '<TD>' + format(Round(QuoteComparision_Loc."Total PO Qty. Cost", 0.01, '=')) + '</TD>';
-                                BodyTxt += '<TD>' + Format(QuoteComparision_Loc."Entry No.") + '</TD>';
-                                BodyTxt += '<TD>' + Format(QuoteComparision_Loc."Priority No.") + '</TD>';
-                                BodyTxt += '<TD>' + format(QuoteComparision_Loc.Status) + '</TD>';
-                                BodyTxt += '<TD>' + QuoteComparision_Loc."Approver Remarks" + '</TD>';
-                                BodyTxt += '</TR>';
-                                //<<Mail Body
+                        until QuoteComparision_Loc.Next() = 0;
 
-                            end else begin
-                                QuoteComparision_Loc.Pending := false;
-                                QuoteComparision_Loc.Modify();
-                            end;
-                        until QuoteComparision_Loc_Temp.Next() = 0;
                         //>>Mail Footer
                         BodyTxt += '</table>';
                         BodyTxt += '<br></br>';
@@ -351,6 +283,7 @@ page 50137 "Request To Approve Quote Comp"
                     end;
                     CurrPage.Update();
                 end;
+
             }
             action("Reject")
             {
@@ -395,9 +328,6 @@ page 50137 "Request To Approve Quote Comp"
                     if AppEntryIndentEntryno.FindLast then
                         EntryNo := AppEntryIndentEntryno."Entry No.";
 
-                    IF QuoteComparision_Loc_Temp.IsTemporary then
-                        QuoteComparision_Loc_Temp.DeleteAll();
-
                     QuoteComparision_Loc.Reset();
                     QuoteComparision_Loc.SetRange(Status, QuoteComparision_Loc.Status::"Pending Approval");
                     QuoteComparision_Loc.SetRange("Select to Approve", true);
@@ -407,51 +337,15 @@ page 50137 "Request To Approve Quote Comp"
                         repeat
                             IF (QuoteComparision_Loc."Approver Remarks" = '') then
                                 Error(StrSubstNo('Approver/Rejecter Remarks must be filled in every line'));
-
-                            If (QuoteComparision_Loc."Indent No." = '') then begin
-                                QuoteComparision_Loc_1.Reset();
-                                QuoteComparision_Loc_1.SetFilter(Status, '%1|%2', QuoteComparision_Loc_1.Status::"Not Qualified", QuoteComparision_Loc_1.Status::"Pending Approval");
-                                QuoteComparision_Loc_1.SetRange(Pending, true);
-                                QuoteComparision_Loc_1.SetRange("Indent No.", 'Blank');
-                                IF QuoteComparision_Loc_1.FindSet() then begin
-                                    repeat
-                                        if not QuoteComparision_Loc_Temp.Get(QuoteComparision_Loc_1."Entry No.") then begin
-                                            QuoteComparision_Loc_Temp.Init();
-                                            QuoteComparision_Loc_Temp."Entry No." := QuoteComparision_Loc_1."Entry No.";
-                                            QuoteComparision_Loc_Temp.Insert();
-                                        end;
-                                    until QuoteComparision_Loc_1.Next() = 0;
-                                end;
-                            end else begin
-                                QuoteComparision_Loc_1.Reset();
-                                QuoteComparision_Loc_1.SetFilter(Status, '%1|%2', QuoteComparision_Loc_1.Status::"Not Qualified", QuoteComparision_Loc_1.Status::"Pending Approval");
-                                QuoteComparision_Loc_1.SetRange(Pending, true);
-                                QuoteComparision_Loc_1.SetRange("Indent No.", QuoteComparision_Loc."Indent No.");
-                                IF QuoteComparision_Loc_1.FindSet() then begin
-                                    repeat
-                                        if not QuoteComparision_Loc_Temp.Get(QuoteComparision_Loc_1."Entry No.") then begin
-                                            QuoteComparision_Loc_Temp.Init();
-                                            QuoteComparision_Loc_Temp."Entry No." := QuoteComparision_Loc_1."Entry No.";
-                                            QuoteComparision_Loc_Temp.Insert();
-                                        end;
-                                    until QuoteComparision_Loc_1.Next() = 0;
-                                end;
-                            end;
                         until QuoteComparision_Loc.Next() = 0;
                     end;
 
-                    Clear(QuoteComparision_Loc);
-                    QuoteComparision_Loc_Temp.Reset();
-                    IF QuoteComparision_Loc_Temp.FindSet() then begin
-
-                        QuoteComparision_Loc.Get(QuoteComparision_Loc_Temp."Entry No.");
-                        QuoteComparision_Loc_1.Reset();
-                        QuoteComparision_Loc_1.SetRange(Status, QuoteComparision_Loc_1.Status::"Pending Approval");
-                        iF QuoteComparision_Loc."Indent No." <> '' then
-                            QuoteComparision_Loc_1.SetRange("Indent No.", QuoteComparision_Loc."Indent No.");
-                        IF QuoteComparision_Loc_1.FindFirst() then;
-
-
+                    QuoteComparision_Loc.Reset();
+                    QuoteComparision_Loc.SetRange(Status, QuoteComparision_Loc.Status::"Pending Approval");
+                    QuoteComparision_Loc.SetRange("Select to Approve", true);
+                    QuoteComparision_Loc.SetRange("Approver UserID", UserId);
+                    QuoteComparision_Loc.SetRange(Pending, true);
+                    IF QuoteComparision_Loc.FindSet() then begin
                         //>>Mail Header
                         Clear(MailUserIdVar);
                         Clear(BccMailIdList);
@@ -459,7 +353,7 @@ page 50137 "Request To Approve Quote Comp"
 
                         MailUserid := UserId;
                         VarUserSetup.Reset();
-                        VarUserSetup.SetRange("User ID", QuoteComparision_Loc_1."Sender UserID");
+                        VarUserSetup.SetRange("User ID", QuoteComparision_Loc."Sender UserID");
                         if VarUserSetup.FindFirst() then begin
                             approveremail := VarUserSetup."E-Mail";
                             MailUserIdVar.Add(approveremail);
@@ -496,50 +390,41 @@ page 50137 "Request To Approve Quote Comp"
                         BodyTxt += '<TH>Remarks</TH>';
                         BodyTxt += '</TR>';
                         //<<Mail Header
-
-
                         repeat
-                            IF QuoteComparision_Loc.Get(QuoteComparision_Loc_Temp."Entry No.") and (QuoteComparision_Loc.Status = QuoteComparision_Loc.Status::"Pending Approval") then begin
-                                ApprovalEntryIndent.Init;
-                                EntryNo += 1;
-                                ApprovalEntryIndent."Entry No." := EntryNo;
-                                ApprovalEntryIndent."Quote Comparison Entry No." := QuoteComparision_Loc."Entry No.";
-                                ApprovalEntryIndent."Approver UserID" := UserId;
-                                ApprovalEntryIndent."Approval DateTime" := CurrentDateTime;
-                                ApprovalEntryIndent.Status := ApprovalEntryIndent.Status::Rejected;
-                                ApprovalEntryIndent."Sent for approval" := false;
-                                ApprovalEntryIndent.Insert;
+                            ApprovalEntryIndent.Init;
+                            EntryNo += 1;
+                            ApprovalEntryIndent."Entry No." := EntryNo;
+                            ApprovalEntryIndent."Quote Comparison Entry No." := QuoteComparision_Loc."Entry No.";
+                            ApprovalEntryIndent."Approver UserID" := UserId;
+                            ApprovalEntryIndent."Approval DateTime" := CurrentDateTime;
+                            ApprovalEntryIndent.Status := ApprovalEntryIndent.Status::Rejected;
+                            ApprovalEntryIndent."Sent for approval" := false;
+                            ApprovalEntryIndent.Insert;
 
 
-                                QuoteComparision_Loc.Status := QuoteComparision_Loc.Status::Rejected;
-                                QuoteComparision_Loc.Pending := false;
-                                QuoteComparision_Loc."Select to Approve" := false;
-                                QuoteComparision_Loc.Modify();
+                            QuoteComparision_Loc.Status := QuoteComparision_Loc.Status::Rejected;
+                            QuoteComparision_Loc.Pending := false;
+                            QuoteComparision_Loc."Select to Approve" := false;
+                            QuoteComparision_Loc.Modify();
 
-                                //>Mail Body
-                                BodyTxt += '<TR>';
-                                BodyTxt += '<TD>' + Format(QuoteComparision_Loc."Indent No.") + '</TD>';
-                                BodyTxt += '<TD>' + Format(QuoteComparision_Loc."Indent Line No") + '</TD>';
-                                BodyTxt += '<TD>' + Format(QuoteComparision_Loc.Type) + '</TD>';
-                                BodyTxt += '<TD>' + Format(QuoteComparision_Loc.Description) + '</TD>';
-                                BodyTxt += '<TD>' + Format(QuoteComparision_Loc."Vendor Name") + '</TD>';
-                                BodyTxt += '<TD>' + Format(QuoteComparision_Loc."Indent Approved Quantity") + '</TD>';
-                                BodyTxt += '<TD>' + Format(QuoteComparision_Loc."Unit Cost") + '</TD>';
-                                BodyTxt += '<TD>' + Format(QuoteComparision_Loc."PO Qty.") + '</TD>';
-                                BodyTxt += '<TD>' + format(Round(QuoteComparision_Loc."Total PO Qty. Cost", 0.01, '=')) + '</TD>';
-                                BodyTxt += '<TD>' + Format(QuoteComparision_Loc."Entry No.") + '</TD>';
-                                BodyTxt += '<TD>' + Format(QuoteComparision_Loc."Priority No.") + '</TD>';
-                                BodyTxt += '<TD>' + format(QuoteComparision_Loc.Status) + '</TD>';
-                                BodyTxt += '<TD>' + QuoteComparision_Loc."Approver Remarks" + '</TD>';
-                                BodyTxt += '</TR>';
-                                //<<Mail Body
-
-
-                            end else begin
-                                QuoteComparision_Loc.Pending := false;
-                                QuoteComparision_Loc.Modify();
-                            end;
-                        until QuoteComparision_Loc_Temp.Next() = 0;
+                            //>Mail Body
+                            BodyTxt += '<TR>';
+                            BodyTxt += '<TD>' + Format(QuoteComparision_Loc."Indent No.") + '</TD>';
+                            BodyTxt += '<TD>' + Format(QuoteComparision_Loc."Indent Line No") + '</TD>';
+                            BodyTxt += '<TD>' + Format(QuoteComparision_Loc.Type) + '</TD>';
+                            BodyTxt += '<TD>' + Format(QuoteComparision_Loc.Description) + '</TD>';
+                            BodyTxt += '<TD>' + Format(QuoteComparision_Loc."Vendor Name") + '</TD>';
+                            BodyTxt += '<TD>' + Format(QuoteComparision_Loc."Indent Approved Quantity") + '</TD>';
+                            BodyTxt += '<TD>' + Format(QuoteComparision_Loc."Unit Cost") + '</TD>';
+                            BodyTxt += '<TD>' + Format(QuoteComparision_Loc."PO Qty.") + '</TD>';
+                            BodyTxt += '<TD>' + format(Round(QuoteComparision_Loc."Total PO Qty. Cost", 0.01, '=')) + '</TD>';
+                            BodyTxt += '<TD>' + Format(QuoteComparision_Loc."Entry No.") + '</TD>';
+                            BodyTxt += '<TD>' + Format(QuoteComparision_Loc."Priority No.") + '</TD>';
+                            BodyTxt += '<TD>' + format(QuoteComparision_Loc.Status) + '</TD>';
+                            BodyTxt += '<TD>' + QuoteComparision_Loc."Approver Remarks" + '</TD>';
+                            BodyTxt += '</TR>';
+                        //<<Mail Body
+                        until QuoteComparision_Loc.Next() = 0;
                         //>>Mail Footer
                         BodyTxt += '</table>';
                         BodyTxt += '<br></br>';

@@ -193,7 +193,6 @@ table 50103 "Posted Indent Line"
     begin
         PostedIndentHeader_Loc.Get(Rec."Indent No.");
         Rec.Status := PostedIndentHeader_Loc.Status;
-
     end;
 
 }

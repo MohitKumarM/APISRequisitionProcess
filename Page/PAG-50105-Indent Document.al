@@ -5,17 +5,15 @@ page 50105 "Indent Document"
     //SourceTableView = sorting("No.") where(Status = filter(Open | "Sent for approval"));
     SourceTableView = sorting("No.");
     ApplicationArea = All;
+
+
     layout
     {
         area(Content)
         {
             group(General)
             {
-                //  modify("No.")
-                // {
-                //     Caption = 'Indent Number';
-                // }
-
+                Editable = PageEditable;
                 field("No."; Rec."No.")
                 {
                     ApplicationArea = all;
@@ -25,31 +23,36 @@ page 50105 "Indent Document"
                 {
                     ApplicationArea = all;
                     Editable = true;
+                    ShowMandatory = true;
                 }
                 field("Document Date"; Rec."Document Date")
                 {
                     ToolTip = 'Specifies the value of the Document Date field.';
                     ApplicationArea = all;
+                    ShowMandatory = true;
                 }
                 field("Posting Date"; Rec."Posting Date")
                 {
                     ToolTip = 'Specifies the value of the Posting Date field.';
                     ApplicationArea = all;
+                    ShowMandatory = true;
                 }
                 field("Required Date"; Rec."Required Date")
                 {
                     ToolTip = 'Specifies the value of the Required Date field.';
                     ApplicationArea = all;
+                    ShowMandatory = true;
                 }
                 field("Indent Status"; Rec."Indent Status")
                 {
                     ApplicationArea = all;
+                    ShowMandatory = true;
                 }
                 field("Shortcut Dimension 1 Code"; Rec."Shortcut Dimension 1 Code")
                 {
                     ToolTip = 'Specifies the value of the Shortcut Dimension 1 Code field.';
                     ApplicationArea = all;
-
+                    ShowMandatory = true;
                     Editable = false;
                 }
                 field("Shortcut Dimension 2 Code"; Rec."Shortcut Dimension 2 Code")
@@ -57,6 +60,7 @@ page 50105 "Indent Document"
                     ToolTip = 'Specifies the value of the Shortcut Dimension 2 Code field.';
                     ApplicationArea = all;
                     Editable = false;
+                    ShowMandatory = true;
                 }
                 field("Shortcut Dimension 4 Code"; Rec."Shortcut Dimension 4 Code")
                 {
@@ -64,6 +68,7 @@ page 50105 "Indent Document"
                     Editable = false;
                     ShowCaption = true;
                     Caption = 'Department Code';
+                    ShowMandatory = true;
                 }
 
                 field(Status; Rec.Status)
@@ -104,6 +109,7 @@ page 50105 "Indent Document"
 
         area(Navigation)
         {
+
             action(Dimensions)
             {
                 AccessByPermission = TableData Dimension = R;
@@ -113,7 +119,7 @@ page 50105 "Indent Document"
                 Image = Dimensions;
                 ShortCutKey = 'Alt+D';
                 ToolTip = 'View or edit dimensions, such as area, project, or department, that you can assign to sales and purchase documents to distribute costs and analyze transaction history.';
-
+                Visible = PageEditable;
                 trigger OnAction()
                 begin
                     Rec.ShowDocDim();
@@ -129,7 +135,10 @@ page 50105 "Indent Document"
                 PromotedIsBig = true;
                 PromotedCategory = Process;
                 ApplicationArea = all;
+                Visible = PageEditable;
                 trigger OnAction()
+                var
+                    Item_Loc: Record Item;
                 begin
 
                     Rec.testfield("Shortcut Dimension 1 Code");
@@ -139,21 +148,24 @@ page 50105 "Indent Document"
                     IndentLine.Reset();
                     IndentLine.setrange("Indent No.", Rec."No.");
                     if IndentLine.FindFirst() then begin
-
                         IndentLine.TestField(Quantity);
-                        IndentLine.TestField("Unit Price");
 
-                        IF (IndentLine."PM Item Type" = IndentLine."PM Item Type"::Label) then begin
-                            IndentLine.TestField(Length);
-                            IndentLine.TestField(Width);
-                            IndentLine.TestField("Substrate Type");
+                        IF (IndentLine.Type = IndentLine.Type::Item) and Item_Loc.Get(IndentLine."No.") then begin
+                            if (Item_Loc."PM Item Type" <> Item_Loc."PM Item Type"::Blank) then
+                                IndentLine.TestField("PM Item Type");
+
+                            if (Item_Loc."PM Item Type" = Item_Loc."PM Item Type"::Label) then begin
+                                IndentLine.TestField("PM Item Type", IndentLine."PM Item Type"::Label);
+                                IndentLine.TestField(Length);
+                                IndentLine.TestField(Width);
+                                IndentLine.TestField("Substrate Type");
+                            end;
                         end;
-
-
                     end;
 
                     IF NOT CONFIRM('Do you want to send for approval') THEN
                         EXIT;
+
                     Clear(EntryNo);
                     if AppEntryIndentEntryno.FindLast then
                         EntryNo := AppEntryIndentEntryno."Entry No.";
@@ -187,6 +199,7 @@ page 50105 "Indent Document"
                 PromotedIsBig = true;
                 PromotedCategory = Process;
                 ApplicationArea = all;
+                Visible = PageEditable;
                 trigger OnAction()
                 begin
                     Rec.testfield("Rejection Remarks");
@@ -217,6 +230,28 @@ page 50105 "Indent Document"
                     Rec.Modify();
                 end;
             }
+            action("Cancel Indent")
+            {
+                Promoted = true;
+                PromotedIsBig = true;
+                PromotedCategory = Process;
+                ApplicationArea = all;
+                Visible = PageEditable;
+                trigger OnAction()
+                var
+                    PreIndentHeader_Loc: Record "Pre Indent Header";
+                begin
+                    Rec.testfield("Rejection Remarks");
+                    IF NOT CONFIRM('Do you want to Cancel') THEN
+                        EXIT;
+
+                    IF PreIndentHeader_Loc.Get(Rec."No.") then begin
+                        PreIndentHeader_Loc.Status := PreIndentHeader_Loc.Status::Cancel;
+                        PreIndentHeader_Loc.Modify(true);
+                        CurrPage.Update();
+                    end;
+                end;
+            }
 
             action("Document History")
             {
@@ -225,6 +260,7 @@ page 50105 "Indent Document"
                 PromotedCategory = Process;
                 ApplicationArea = all;
                 Image = History;
+                Visible = PageEditable;
                 trigger OnAction()
                 begin
                     approvalEntryIndent.Reset();
@@ -241,6 +277,7 @@ page 50105 "Indent Document"
                 PromotedCategory = Process;
                 ApplicationArea = all;
                 Image = Print;
+                Visible = PageEditable;
                 trigger OnAction()
                 var
                     indnetHeader: Record "Pre Indent Header";
@@ -249,16 +286,9 @@ page 50105 "Indent Document"
                     indnetHeader.setrange("No.", rec."No.");
                     if indnetHeader.FindFirst then
                         Report.RunModal(Report::"Indent Report New", true, true, indnetHeader);
-
                 end;
-
             }
-
-
-
-
         }
-
     }
 
     procedure SendMail(IndentHeader: Record "Pre Indent Header")
@@ -375,6 +405,9 @@ page 50105 "Indent Document"
         usersetup: Record "User Setup";
         AppEntryIndentEntryno: Record "Approval Entry Indent";
 
+
+
+
     trigger OnNewRecord(BelowxRec: Boolean)
     begin
         // TemplateIndent.TemplateSelectionForIndent(79902, Rec, JnlSelected, GenJnlTemplateCode);
@@ -391,11 +424,34 @@ page 50105 "Indent Document"
             Rec."Shortcut Dimension 4 Code" := usersetup."Department Code";
     end;
 
+    trigger OnOpenPage()
+    begin
+        PageEditableFunction();
+    end;
+
+    trigger OnAfterGetCurrRecord()
+    begin
+        PageEditableFunction();
+    end;
+
+    trigger OnAfterGetRecord()
+    begin
+        PageEditableFunction();
+    end;
+
+    procedure PageEditableFunction()
+    begin
+        IF (Rec.Status <> Rec.Status::Cancel) then
+            PageEditable := true
+        else
+            PageEditable := false;
+    end;
 
     var
 
         JnlSelected: Boolean;
         GenJnlTemplateCode: Code[10];
         usersetup1: Record "User Setup";
+        PageEditable: Boolean;
 
 }

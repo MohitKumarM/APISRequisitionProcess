@@ -17,10 +17,6 @@ page 50141 "Pending Appr. Quote Comparison"
             repeater(General)
             {
 
-                Field(Select; Rec.Select)
-                {
-
-                }
                 field("Entry No."; Rec."Entry No.")
                 {
                     ToolTip = 'Specifies the value of the Entry No. field.';
@@ -167,112 +163,44 @@ page 50141 "Pending Appr. Quote Comparison"
                     IF Not Confirm('Do you want to cancel Pending Approval Lines') then
                         exit;
 
-                    IF IndentHeader_Temp.IsTemporary then
-                        IndentHeader_Temp.DeleteAll();
-
                     Clear(EntryNo);
                     if AppEntryIndentEntryno.FindLast then
                         EntryNo := AppEntryIndentEntryno."Entry No.";
 
-                    QuoteComparision_Loc.Reset();
-                    QuoteComparision_Loc.SetRange(Status, QuoteComparision_Loc.Status::"Pending Approval");
-                    QuoteComparision_Loc.SetRange(Pending, true);
+                    Clear(QuoteComparision_Loc);
+                    CurrPage.SetSelectionFilter(QuoteComparision_Loc);
                     IF QuoteComparision_Loc.FindSet() then begin
                         repeat
-                            IF (QuoteComparision_Loc."Indent No." <> '') then begin
-                                IF not IndentHeader_Temp.Get(QuoteComparision_Loc."Indent No.") then begin
-                                    IndentHeader_Temp.Init();
-                                    IndentHeader_Temp."No." := QuoteComparision_Loc."Indent No.";
-                                    IndentHeader_Temp.Insert();
-                                end;
-                            end else begin
-                                IF not IndentHeader_Temp.Get('Blank') then begin
-                                    IndentHeader_Temp.Init();
-                                    IndentHeader_Temp."No." := 'Blank';
-                                    IndentHeader_Temp.Insert();
-                                end;
-                            end;
+
+                            AppEntryIndentEntryno.Reset();
+                            AppEntryIndentEntryno.SetRange("Quote Comparison Entry No.", QuoteComparision_Loc."Entry No.");
+                            AppEntryIndentEntryno.SetRange("Sent for approval", true);
+                            if AppEntryIndentEntryno.Findfirst then
+                                repeat
+                                    AppEntryIndentEntryno."Sent for approval" := false;
+                                    AppEntryIndentEntryno.Modify;
+                                until AppEntryIndentEntryno.Next = 0;
+
+                            ApprovalEntryIndent.Init;
+                            EntryNo += 1;
+                            ApprovalEntryIndent."Entry No." := EntryNo;
+                            ApprovalEntryIndent."Quote Comparison Entry No." := QuoteComparision_Loc."Entry No.";
+                            ApprovalEntryIndent."Cancel UserID" := UserId;
+                            ApprovalEntryIndent."Cancel DateTime" := CurrentDateTime;
+                            ApprovalEntryIndent.Status := ApprovalEntryIndent.Status::Cancel;
+                            ApprovalEntryIndent."Sent for approval" := false;
+                            ApprovalEntryIndent.Insert;
+
+
+                            QuoteComparision_Loc.Status := QuoteComparision_Loc.Status::Open;
+                            QuoteComparision_Loc.Pending := false;
+                            QuoteComparision_Loc.Modify();
+
                         until QuoteComparision_Loc.Next() = 0;
+                        Message('Lines has been  cancelled for approval and reopened');
                     end else
                         Error('There are no lines selected');
-
-                    Clear(QuoteComparision_Loc);
-                    IndentHeader_Temp.Reset();
-                    IF IndentHeader_Temp.FindSet() then begin
-                        repeat
-                            IF IndentHeader_Temp."No." = 'Blank' then begin
-                                QuoteComparision_Loc.Reset();
-                                QuoteComparision_Loc.SetFilter(Status, '%1|%2', QuoteComparision_Loc.Status::"Not Qualified", QuoteComparision_Loc.Status::"Pending Approval");
-                                QuoteComparision_Loc.SetRange("Indent No.", 'Blank');
-                                QuoteComparision_Loc.SetRange(Pending, true);
-                                IF QuoteComparision_Loc.FindSet() then begin
-                                    repeat
-                                        IF QuoteComparision_Loc.Status = QuoteComparision_Loc.Status::"Pending Approval" then begin
-                                            AppEntryIndentEntryno.Reset();
-                                            AppEntryIndentEntryno.SetRange("Quote Comparison Entry No.", Rec."Entry No.");
-                                            AppEntryIndentEntryno.SetRange("Sent for approval", true);
-                                            if AppEntryIndentEntryno.Findfirst then
-                                                repeat
-                                                    AppEntryIndentEntryno."Sent for approval" := false;
-                                                    AppEntryIndentEntryno.Modify;
-                                                until AppEntryIndentEntryno.Next = 0;
-
-                                            ApprovalEntryIndent.Init;
-                                            EntryNo += 1;
-                                            ApprovalEntryIndent."Entry No." := EntryNo;
-                                            ApprovalEntryIndent."Quote Comparison Entry No." := Rec."Entry No.";
-                                            ApprovalEntryIndent."Cancel UserID" := UserId;
-                                            ApprovalEntryIndent."Cancel DateTime" := CurrentDateTime;
-                                            ApprovalEntryIndent.Status := ApprovalEntryIndent.Status::Cancel;
-                                            ApprovalEntryIndent."Sent for approval" := false;
-                                            ApprovalEntryIndent.Insert;
-
-                                        end;
-                                        QuoteComparision_Loc.Status := QuoteComparision_Loc.Status::Open;
-                                        QuoteComparision_Loc.Pending := false;
-                                        QuoteComparision_Loc.Modify();
-                                    until QuoteComparision_Loc.Next() = 0;
-                                end;
-
-                            end else begin
-                                QuoteComparision_Loc.Reset();
-                                QuoteComparision_Loc.SetFilter(Status, '%1|%2', QuoteComparision_Loc.Status::"Not Qualified", QuoteComparision_Loc.Status::"Pending Approval");
-                                QuoteComparision_Loc.SetRange("Indent No.", IndentHeader_Temp."No.");
-                                QuoteComparision_Loc.SetRange(Pending, true);
-                                IF QuoteComparision_Loc.FindSet() then begin
-                                    repeat
-                                        IF QuoteComparision_Loc.Status = QuoteComparision_Loc.Status::"Pending Approval" then begin
-                                            AppEntryIndentEntryno.Reset();
-                                            AppEntryIndentEntryno.SetRange("Quote Comparison Entry No.", Rec."Entry No.");
-                                            AppEntryIndentEntryno.SetRange("Sent for approval", true);
-                                            if AppEntryIndentEntryno.Findfirst then
-                                                repeat
-                                                    AppEntryIndentEntryno."Sent for approval" := false;
-                                                    AppEntryIndentEntryno.Modify;
-                                                until AppEntryIndentEntryno.Next = 0;
-
-                                            ApprovalEntryIndent.Init;
-                                            EntryNo += 1;
-                                            ApprovalEntryIndent."Entry No." := EntryNo;
-                                            ApprovalEntryIndent."Quote Comparison Entry No." := Rec."Entry No.";
-                                            ApprovalEntryIndent."Cancel UserID" := UserId;
-                                            ApprovalEntryIndent."Cancel DateTime" := CurrentDateTime;
-                                            ApprovalEntryIndent.Status := ApprovalEntryIndent.Status::Cancel;
-                                            ApprovalEntryIndent."Sent for approval" := false;
-                                            ApprovalEntryIndent.Insert;
-
-                                        end;
-                                        QuoteComparision_Loc.Status := QuoteComparision_Loc.Status::Open;
-                                        QuoteComparision_Loc.Pending := false;
-                                        QuoteComparision_Loc.Modify();
-                                    until QuoteComparision_Loc.Next() = 0;
-                                end;
-
-                            end;
-                        until IndentHeader_Temp.Next() = 0;
-                        Message('Lines has been  cancelled for approval and reopened');
-                        CurrPage.Update();
-                    end;
+                    CurrPage.Update();
                 end;
             }
         }

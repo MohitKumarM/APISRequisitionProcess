@@ -52,8 +52,41 @@ page 50146 "Item Forecast Master"
                 field(Status; Rec.Status)
                 {
                     ToolTip = 'Specifies the value of the Status field.';
+                    Editable = false;
                 }
             }
+        }
+    }
+    actions
+    {
+        area(Processing)
+        {
+            action("Close")
+            {
+                Caption = 'Close';
+                Ellipsis = true;
+                Promoted = true;
+                PromotedCategory = Process;
+                PromotedIsBig = true;
+                ApplicationArea = All;
+                trigger OnAction()
+                var
+                    ItemForeCaste_Loc: Record "Item Forecaste Master";
+                begin
+                    Clear(ItemForeCaste_Loc);
+                    CurrPage.SetSelectionFilter(ItemForeCaste_Loc);
+                    IF ItemForeCaste_Loc.FindSet() then begin
+                        repeat
+                            ItemForeCaste_Loc.Status := ItemForeCaste_Loc.Status::Closed;
+                            ItemForeCaste_Loc.Modify();
+                        until ItemForeCaste_Loc.Next() = 0;
+                        Message('Selected lines has been closed');
+                    end else
+                        Message('There are no lines are selected to close');
+                    CurrPage.Update();
+                end;
+            }
+
         }
     }
 }
