@@ -223,7 +223,7 @@ table 50110 "PM Planning Item Wise"
         if Location_loc.FindSet() then begin
             repeat
                 Item_Loc.Reset();
-                Item_Loc.SetFilter("No.", '1000|1001|1100|70061|70062');
+                //Item_Loc.SetFilter("No.", '70063|70064|70066|70067|70068|70069');
                 IF Item_Loc.FindSet() then begin
                     repeat
                         CalculateDemandNewLogic03112023(Item_Loc, Location_loc);
@@ -231,15 +231,22 @@ table 50110 "PM Planning Item Wise"
                 end;
             until Location_loc.Next() = 0;
         end;
+
         Commit();
         Clear(PlanningWorksheet_Loc_1);
         PlanningWorksheet_Loc_1.Reset();
         IF PlanningWorksheet_Loc_1.FindSet() then begin
             repeat
+                if (PlanningWorksheet_Loc_1."Actaul Demand" > PlanningWorksheet_Loc_1."Inventory on Prod. Location") then begin
+                    PlanningWorksheet_Loc_1."Actaul Demand" := PlanningWorksheet_Loc_1."Actaul Demand" - PlanningWorksheet_Loc_1."Inventory on Prod. Location";
+                    PlanningWorksheet_Loc_1."Inventory on Prod. Location" := 0;
+                end else begin
+                    PlanningWorksheet_Loc_1."Inventory on Prod. Location" := PlanningWorksheet_Loc_1."Inventory on Prod. Location" - PlanningWorksheet_Loc_1."Actaul Demand";
+                    PlanningWorksheet_Loc_1."Actaul Demand" := 0;
+                end;
                 PlanningWorksheet_Loc_1.AssignFGDemandOnComponents(PlanningWorksheet_Loc_1);
                 PlanningWorksheet_Loc_1.Modify();
             until PlanningWorksheet_Loc_1.Next() = 0;
-
         end;
 
         PlanningWorksheet_Loc_1.Reset();

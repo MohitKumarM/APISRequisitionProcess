@@ -22,17 +22,22 @@ pageextension 50107 Item extends "Item Card"
             {
                 ApplicationArea = all;
                 Editable = ItemTypeEditable;
+                trigger OnValidate()
+                begin
+                    PMItemTypeEditable();
+                    CurrPage.Update(true);
+                end;
             }
             field(Length; Rec.Length)
             {
                 ApplicationArea = all;
-                Editable = ItemTypeEditable;
+                Editable = PMItemenabled;
 
             }
             field(Width; Rec.Width)
             {
                 ApplicationArea = all;
-                Editable = ItemTypeEditable;
+                Editable = PMItemenabled;
             }
         }
     }
@@ -74,9 +79,10 @@ pageextension 50107 Item extends "Item Card"
         IF (CloseAction = CloseAction::OK) or (CloseAction = CloseAction::LookupOK) then begin
 
             IF (Rec."Planning type" = Rec."Planning type"::PM) then begin
-                Rec.TestField("PM Item Type");
-                Rec.TestField(Length);
-                Rec.TestField(Width);
+                IF (Rec."PM Item Type" = Rec."PM Item Type"::Label) then begin
+                    Rec.TestField(Length);
+                    Rec.TestField(Width);
+                end;
             end;
 
         end;
@@ -85,14 +91,21 @@ pageextension 50107 Item extends "Item Card"
     var
         myInt: Integer;
         ItemTypeEditable: Boolean;
+        PMItemenabled: Boolean;
+
 
     procedure PMItemTypeEditable()
     begin
         begin
-            IF (Rec."Planning type" = Rec."Planning type"::PM) then
-                ItemTypeEditable := true
-            else begin
+            IF (Rec."Planning type" = Rec."Planning type"::PM) then begin
+                ItemTypeEditable := true;
+                IF Rec."PM Item Type" = Rec."PM Item Type"::Label then
+                    PMItemenabled := true
+                else
+                    PMItemenabled := false;
+            end else begin
                 ItemTypeEditable := false;
+                PMItemenabled := false;
                 Rec."PM Item Type" := Rec."PM Item Type"::Blank;
                 Rec.Length := 0;
                 Rec.Width := 0;
