@@ -53,14 +53,7 @@ table 50107 "CZ Header"
         {
             DataClassification = ToBeClassified;
         }
-        field(7; "Start Date"; Date)
-        {
-            DataClassification = ToBeClassified;
-        }
-        field(8; "End date"; Date)
-        {
-            DataClassification = ToBeClassified;
-        }
+
         field(9; "Length Inch"; Decimal)
         {
             DataClassification = ToBeClassified;
@@ -273,11 +266,19 @@ table 50107 "CZ Header"
         {
             DataClassification = ToBeClassified;
         }
+        field(58; "Length Deviation"; Decimal)
+        {
+            DataClassification = ToBeClassified;
+        }
+        field(59; "Width Deviation"; Decimal)
+        {
+            DataClassification = ToBeClassified;
+        }
     }
 
     keys
     {
-        key(Key1; "Product No.", Type, "Vendor Code", "Main Item Code", "Start Date", "End date", "Type Line No.")
+        key(Key1; "Product No.", Type, "Vendor Code", "Main Item Code", "Type Line No.")
         {
             Clustered = true;
         }
@@ -316,10 +317,10 @@ table 50107 "CZ Header"
             IF CZHeader_Loc1.FindSet() then begin
                 repeat
                     IF CZHeader_Loc2.Get(CZHeader_Loc1."Product No.", CZHeader_Loc1.Type, CZHeader_Loc1."Vendor Code", CZHeader_Loc1."Main Item Code",
-                    CZHeader_Loc1."Start Date", CZHeader_Loc1."End date", CZHeader_Loc1."Type Line No.") then begin
+                    CZHeader_Loc1."Type Line No.") then begin
 
                         CZHeader_Loc2.Rename(CZHeader_Loc1."Product No.", CZHeader_Loc1.Type, Rec."Vendor Code", Rec."Main Item Code",
-                        Rec."Start Date", Rec."End date", CZHeader_Loc1."Type Line No.");
+                        CZHeader_Loc1."Type Line No.");
 
                         CZLines_Loc1.Reset();
                         CZLines_Loc1.SetRange("Product No.", CZHeader_Loc1."Product No.");
@@ -328,9 +329,9 @@ table 50107 "CZ Header"
                         IF CZLines_Loc1.FindSet() then begin
                             repeat
                                 IF CZLines_Loc2.Get(CZLines_Loc1."Product No.", CZLines_Loc1.Type, CZLines_Loc1."Type Line No.", CZLines_Loc1."Vendor Code",
-                                CZLines_Loc1."Main Item Code", CZLines_Loc1."Start Date", CZLines_Loc1."End date", CZLines_Loc1."Line No.") then
+                                CZLines_Loc1."Main Item Code", CZLines_Loc1."Line No.") then
                                     CZLines_Loc2.Rename(CZLines_Loc1."Product No.", CZLines_Loc1.Type, CZLines_Loc1."Type Line No.", Rec."Vendor Code",
-                                Rec."Main Item Code", Rec."Start Date", Rec."End date", CZLines_Loc1."Line No.");
+                                Rec."Main Item Code", CZLines_Loc1."Line No.");
 
                             until CZLines_Loc1.Next() = 0;
                         end;
@@ -357,6 +358,98 @@ table 50107 "CZ Header"
                 PurchAndPayableSetup.TestField("Pouch No. Series");
                 Rec."Product No." := NoSeriesMangt.GetNextNo(PurchAndPayableSetup."Pouch No. Series", Today, true);
             end;
+        end;
+    end;
+
+    procedure CalculateCartonCostingHeader()
+    var
+        CZHeader_Loc1: Record "CZ Header";
+    begin
+        if (Rec.Type = Rec.Type::Carton) then begin
+            Rec."Total Length" := Rec."Length MM" + Rec."Length MM" + Rec."Width MM" + Rec."Width MM" + Rec."Length Deviation";
+            Rec."Total Width" := Rec."Width MM" + Rec."Height MM" + Rec."Width Deviation";
+
+            Rec.CalcFields(TotalLinePrice, TotalLineSheetWeightGM);
+            Rec."Conversion Price" := (Rec.Conversion * Rec.TotalLineSheetWeightGM);
+            Rec."Rate Per Box/PCs" := (Rec."Conversion Price" + Rec.Printing + Rec.TotalLinePrice);
+
+            CZHeader_Loc1.Reset();
+            CZHeader_Loc1.SetRange("Product No.", Rec."Product No.");
+            CZHeader_Loc1.SetFilter(Type, '%1|%2 ', CZHeader_Loc1.Type::Partition, CZHeader_Loc1.Type::Plate);
+            IF CZHeader_Loc1.FindSet() then begin
+                Rec."Total Cost" := 0;
+                repeat
+
+                    Rec."Total Cost" += Round(CZHeader_Loc1."Total Cost", 0.01, '=');
+                until CZHeader_Loc1.Next() = 0;
+                Rec."Total Cost" += Rec."Rate Per Box/PCs";
+            end;
+            if Rec.Modify() then;
+        end;
+    end;
+
+    procedure CalculatePartitionCosting()
+    begin
+        if (Rec.Type = Rec.Type::Partition) then begin
+            Rec."Total Length" := (Rec."Length MM" + Rec."Width MM");
+            Rec."Total Width" := (Rec."Width MM" + Rec."Height MM");
+
+
+            Rec.CalcFields(TotalLinePrice, TotalLineSheetWeightGM);
+            Rec."Conversion Price" := (Rec.Conversion * Rec.TotalLineSheetWeightGM);
+            Rec."Rate Per Box/PCs" := (Rec."Conversion Price" + Rec.Printing + Rec.TotalLinePrice);
+            Rec."Total Cost" := Rec."Rate Per Box/PCs" * Rec."No. of Pcs";
+            IF Rec.Modify() then;
+        end;
+    end;
+
+    procedure CalculatePlateCosting()
+    begin
+        if (Rec.Type = Rec.Type::Plate) then begin
+            Rec."Total Length" := Rec."Length MM";
+            Rec."Total Width" := Rec."Width MM";
+
+            Rec.CalcFields(TotalLinePrice, TotalLineSheetWeightGM);
+            Rec."Conversion Price" := (Rec.Conversion * Rec.TotalLineSheetWeightGM);
+            Rec."Rate Per Box/PCs" := (Rec."Conversion Price" + Rec.Printing + Rec.TotalLinePrice);
+            Rec."Total Cost" := Rec."Rate Per Box/PCs" * Rec."No. of Pcs";
+            IF Rec.Modify() then;
+        end;
+    end;
+
+    procedure CalculatePouchCosting()
+    begin
+        if (Rec.Type = Rec.Type::Pouch) then begin
+            Rec."Material in Sq. mm" := (Rec."Width MM" * Rec."Length MM");
+            Rec."Material in Sq. cm" := (Rec."Material in Sq. mm" / 100);
+            IF (Rec."Material in Sq. mm" <> 0) then
+                Rec."Pouches in Sq. M" := (10000 / Rec."Material in Sq. cm");
+
+            Rec.CalcFields(PouchTotalGSM, PouchTotalConspt, PouchTotalCostPerPouch, PouchLineTotalRs);
+
+            Rec."Per Pouch Wt. (Gm)" := Rec.PouchTotalConspt;
+            IF (Rec."Per Pouch Wt. (Gm)" <> 0) then
+                Rec."No. of pouch per kg" := (1000 / Rec."Per Pouch Wt. (Gm)");
+
+            Rec."Basic Material rate / Pouch" := Rec.PouchTotalCostPerPouch;
+            IF (Rec.PouchTotalGSM <> 0) then
+                Rec."Basic Material rate / KG" := (Rec.PouchLineTotalRs / Rec.PouchTotalGSM);
+            Rec."Wastage / Pouch" := (Rec."Basic Material rate / Pouch" * (Rec.Wastage / 100));
+            Rec."Wastage / KG" := (Rec."Basic Material rate / KG" * (Rec.Wastage / 100));
+            IF (Rec."No. of pouch per kg" <> 0) then
+                Rec."Pouching / Pouch" := (Rec."Pouching / KG" / Rec."No. of pouch per kg");
+            Rec."Zipper / Pouch" := ((Rec."Length MM" / 25.4) * Rec.Pouch);
+            Rec."Pouch / KG" := (Rec."Zipper / Pouch" * Rec."No. of pouch per kg");
+            IF (Rec."No. of pouch per kg" <> 0) then
+                Rec."Conversion / Pouch" := (Rec.Conversion / Rec."No. of pouch per kg");
+            Rec."Conversion / KG" := Rec.Conversion;
+            Rec."Landed Price / Pouch" := (Rec."Basic Material rate / Pouch" + Rec."Wastage / Pouch" + Rec."Pouching / Pouch" +
+            Rec."Zipper / Pouch" + Rec."Conversion / Pouch");
+            Rec."Landed Price / KG" := (Rec."Basic Material rate / KG" + Rec."Wastage / KG" + Rec."Pouching / KG" +
+            Rec."Pouch / KG" + Rec."Conversion / KG");
+            Rec."Basic Cost Per Pouch" := Rec."Landed Price / Pouch";
+            Rec."Landed Price (Rs./Kg)" := Rec."Landed Price / KG";
+            If Rec.Modify() then;
         end;
     end;
 

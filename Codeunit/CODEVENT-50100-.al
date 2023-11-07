@@ -14,4 +14,10 @@ codeunit 50100 "Extend90"
             PostedIndentLine.Modify;
         end;
     end;
+
+    [EventSubscriber(ObjectType::Codeunit, codeunit::"System Action Triggers", 'GetNotificationStatus', '', true, false)]
+    procedure GetNotificationStatus(NotificationId: Guid; var IsEnabled: Boolean)
+    begin
+        WorkDate(Today);
+    end;
 }

@@ -41,21 +41,13 @@ page 50119 "Carton Costing"
                     ToolTip = 'Specifies the value of the Main Item Name field.';
                     Editable = false;
                 }
-                field("Start Date"; Rec."Start Date")
-                {
-                    ToolTip = 'Specifies the value of the Start Date field.';
 
-                }
-                field("End date"; Rec."End date")
-                {
-                    ToolTip = 'Specifies the value of the End date field.';
-                }
                 field("Length Inch"; Rec."Length Inch")
                 {
                     ToolTip = 'Specifies the value of the Length Inch field.';
                     trigger OnValidate()
                     begin
-                        CalculateCartonCostingHeader();
+                        Rec.CalculateCartonCostingHeader();
                     end;
                 }
                 field("Length MM"; Rec."Length MM")
@@ -63,7 +55,7 @@ page 50119 "Carton Costing"
                     ToolTip = 'Specifies the value of the Length MM field.';
                     trigger OnValidate()
                     begin
-                        CalculateCartonCostingHeader();
+                        Rec.CalculateCartonCostingHeader();
                     end;
                 }
                 field("Width Inch"; Rec."Width Inch")
@@ -71,7 +63,7 @@ page 50119 "Carton Costing"
                     ToolTip = 'Specifies the value of the Width Inch field.';
                     trigger OnValidate()
                     begin
-                        CalculateCartonCostingHeader();
+                        Rec.CalculateCartonCostingHeader();
                     end;
                 }
                 field("Width MM"; Rec."Width MM")
@@ -79,7 +71,7 @@ page 50119 "Carton Costing"
                     ToolTip = 'Specifies the value of the Width MM field.';
                     trigger OnValidate()
                     begin
-                        CalculateCartonCostingHeader();
+                        Rec.CalculateCartonCostingHeader();
                     end;
                 }
                 field("Height Inch"; Rec."Height Inch")
@@ -87,7 +79,7 @@ page 50119 "Carton Costing"
                     ToolTip = 'Specifies the value of the Height Inch field.';
                     trigger OnValidate()
                     begin
-                        CalculateCartonCostingHeader();
+                        Rec.CalculateCartonCostingHeader();
                     end;
                 }
                 field("Height MM"; Rec."Height MM")
@@ -95,7 +87,7 @@ page 50119 "Carton Costing"
                     ToolTip = 'Specifies the value of the Height MM field.';
                     trigger OnValidate()
                     begin
-                        CalculateCartonCostingHeader();
+                        Rec.CalculateCartonCostingHeader();
                     end;
                 }
                 field("Total Length"; Rec."Total Length")
@@ -103,17 +95,31 @@ page 50119 "Carton Costing"
                     ToolTip = 'Specifies the value of the Total Length field.';
                     Editable = false;
                 }
+                field("Length Deviation"; Rec."Length Deviation")
+                {
+                    trigger OnValidate()
+                    begin
+                        Rec.CalculateCartonCostingHeader();
+                    end;
+                }
                 field("Total Width"; Rec."Total Width")
                 {
                     ToolTip = 'Specifies the value of the Total Width field.';
                     Editable = false;
+                }
+                field("Width Deviation"; Rec."Width Deviation")
+                {
+                    trigger OnValidate()
+                    begin
+                        Rec.CalculateCartonCostingHeader();
+                    end;
                 }
                 field(Conversion; Rec.Conversion)
                 {
                     ToolTip = 'Specifies the value of the Conversion field.';
                     trigger OnValidate()
                     begin
-                        CalculateCartonCostingHeader();
+                        Rec.CalculateCartonCostingHeader();
                     end;
                 }
                 field("Conversion Price"; Rec."Conversion Price")
@@ -174,12 +180,14 @@ page 50119 "Carton Costing"
                     ToolTip = 'Specifies the value of the Rate Per Box/PCs field.';
                     Editable = false;
                 }
-                field(TotalPartitionCost; TotalPartitionCost)
+                field("Total Partition Cost"; TotalPartitionCost)
                 {
+                    Caption = 'Total Partition Cost';
                     Editable = false;
                 }
-                field(TotalPlateCost; TotalPlateCost)
+                field("Total Plate Cost"; TotalPlateCost)
                 {
+                    Caption = 'TotalPlateCost';
                     Editable = false;
                 }
                 field("Total Cost"; Rec."Total Cost")
@@ -191,8 +199,7 @@ page 50119 "Carton Costing"
             {
                 ApplicationArea = Basic, Suite;
                 SubPageLink = "Product No." = field("Product No."), Type = field(Type),
-                "Type Line No." = field("Type Line No."), "Vendor Code" = field("Vendor Code"), "Main Item Code" = field("Main Item Code"),
-                "Start Date" = field("Start Date"), "End date" = field("End date");
+                "Type Line No." = field("Type Line No."), "Vendor Code" = field("Vendor Code"), "Main Item Code" = field("Main Item Code");
                 UpdatePropagation = Both;
             }
 
@@ -213,8 +220,8 @@ page 50119 "Carton Costing"
                 PromotedIsBig = true;
                 Image = Statistics;
                 RunObject = page "Partition Costing List";
-                RunPageLink = "Product No." = field("Product No."), Type = filter(Partition), "Vendor Code" = field("Vendor Code"),
-                "Start Date" = field("Start Date"), "End date" = field("End date");
+                RunPageLink = "Product No." = field("Product No."), Type = filter(Partition), "Vendor Code" = field("Vendor Code");
+
             }
             action(Plates)
             {
@@ -225,8 +232,8 @@ page 50119 "Carton Costing"
                 PromotedCategory = Process;
                 PromotedIsBig = true;
                 RunObject = page "Plate Costing List";
-                RunPageLink = "Product No." = field("Product No."), Type = filter(Plate), "Vendor Code" = field("Vendor Code"),
-                "Start Date" = field("Start Date"), "End date" = field("End date");
+                RunPageLink = "Product No." = field("Product No."), Type = filter(Plate), "Vendor Code" = field("Vendor Code");
+
             }
         }
     }
@@ -234,20 +241,20 @@ page 50119 "Carton Costing"
     trigger OnOpenPage()
     begin
         UpdateTotalPartitionPlate();
-        CalculateCartonCostingHeader();
+        Rec.CalculateCartonCostingHeader();
     end;
 
     trigger OnAfterGetRecord()
     var
     begin
         UpdateTotalPartitionPlate();
-        CalculateCartonCostingHeader();
+        Rec.CalculateCartonCostingHeader();
     end;
 
     trigger OnAfterGetCurrRecord()
     begin
         UpdateTotalPartitionPlate();
-        CalculateCartonCostingHeader();
+        Rec.CalculateCartonCostingHeader();
     end;
 
     procedure UpdateTotalPartitionPlate()
@@ -283,31 +290,6 @@ page 50119 "Carton Costing"
 
     end;
 
-    procedure CalculateCartonCostingHeader()
-    var
-        CZHeader_Loc1: Record "CZ Header";
-    begin
-        Rec."Total Length" := Rec."Length MM" + Rec."Length MM" + Rec."Width MM" + Rec."Width MM" + 38 + 10;
-        Rec."Total Width" := Rec."Width MM" + Rec."Height MM" + 10;
-
-        Rec.CalcFields(TotalLinePrice, TotalLineSheetWeightGM);
-        Rec."Conversion Price" := (Rec.Conversion * Rec.TotalLineSheetWeightGM);
-        Rec."Rate Per Box/PCs" := (Rec."Conversion Price" + Rec.Printing + Rec.TotalLinePrice);
-
-        CZHeader_Loc1.Reset();
-        CZHeader_Loc1.SetRange("Product No.", Rec."Product No.");
-        CZHeader_Loc1.SetFilter(Type, '%1|%2 ', CZHeader_Loc1.Type::Partition, CZHeader_Loc1.Type::Plate);
-        IF CZHeader_Loc1.FindSet() then begin
-            Rec."Total Cost" := 0;
-            repeat
-
-                Rec."Total Cost" += Round(CZHeader_Loc1."Total Cost", 0.01, '=');
-            until CZHeader_Loc1.Next() = 0;
-            Rec."Total Cost" += Rec."Rate Per Box/PCs";
-        end;
-        if Rec.Modify() then;
-
-    end;
 
     var
 

@@ -53,14 +53,7 @@ table 50108 "CZ Lines"
             DataClassification = ToBeClassified;
 
         }
-        field(7; "Start Date"; Date)
-        {
-            DataClassification = ToBeClassified;
-        }
-        field(8; "End date"; Date)
-        {
-            DataClassification = ToBeClassified;
-        }
+
         field(9; "Line No."; Integer)
         {
             DataClassification = ToBeClassified;
@@ -85,9 +78,24 @@ table 50108 "CZ Lines"
             begin
                 SubstratePaperQualityMaster.Reset();
                 SubstratePaperQualityMaster.SetRange(Type, Rec.Type);
-                SubstratePaperQualityMaster.SetRange(Code, "Quality Paper Code");
+                SubstratePaperQualityMaster.SetRange(Code, Rec."Quality Paper Code");
+                SubstratePaperQualityMaster.SetRange("Vendor Code", Rec."Vendor Code");
+                SubstratePaperQualityMaster.SetFilter("Start Date", '<=%1', Today);
+                SubstratePaperQualityMaster.SetFilter("End Date", '>=%1', Today);
                 IF SubstratePaperQualityMaster.FindSet() then begin
                     Rec."Quality Paper Description" := SubstratePaperQualityMaster.Description;
+                    if Rec.Type = Rec.Type::Pouch then
+                        Rec.Validate("Rate(Rs/Kg)", SubstratePaperQualityMaster."Rate of Paper")
+                    else
+                        Rec.Validate("Rate of Papar", SubstratePaperQualityMaster."Rate of Paper");
+
+                    IF Rec.Type = Rec.Type::Carton then begin
+                        Rec."Area (Sq Mtr)" := ((Rec.Length * Rec.Width) / 1000000);
+                        Rec."Box GSM" := ((Rec.GSM * Rec."Area (Sq Mtr)") / 1000);
+                        Rec."Wastage 4%" := (Rec."Box GSM" * 0.04);
+                        Rec."Sheet Weight (GM)" := (Rec."Box GSM" + Rec."Wastage 4%");
+                        Rec.Price := (Rec."Sheet Weight (GM)" * Rec."Rate of Papar");
+                    end;
                 end;
 
                 CZHeader_Loc.Reset();
@@ -99,6 +107,10 @@ table 50108 "CZ Lines"
                 IF CZHeader_Loc.FindFirst() THen begin
                     Rec.Validate(Length, CZHeader_Loc."Total Length");
                     Rec.Validate(Width, CZHeader_Loc."Total Width");
+                    CZHeader_Loc.CalcFields(TotalLinePrice, TotalLineSheetWeightGM);
+
+                    CZHeader_Loc."Conversion Price" := (CZHeader_Loc.Conversion * CZHeader_Loc.TotalLineSheetWeightGM);
+                    CZHeader_Loc."Rate Per Box/PCs" := (CZHeader_Loc."Conversion Price" + CZHeader_Loc.Printing + CZHeader_Loc.TotalLinePrice);
                 end;
             end;
         }
@@ -118,32 +130,32 @@ table 50108 "CZ Lines"
         field(15; "Area (Sq Mtr)"; Decimal)
         {
             DataClassification = ToBeClassified;
-            DecimalPlaces = 0 : 4;
+            DecimalPlaces = 0 : 3;
         }
         field(16; GSM; Decimal)
         {
             DataClassification = ToBeClassified;
-            DecimalPlaces = 0 : 4;
+            DecimalPlaces = 0 : 3;
         }
         field(17; "Box GSM"; Decimal)
         {
             DataClassification = ToBeClassified;
-            DecimalPlaces = 0 : 4;
+            DecimalPlaces = 0 : 3;
         }
         field(18; "Wastage 4%"; Decimal)
         {
             DataClassification = ToBeClassified;
-            DecimalPlaces = 0 : 4;
+            DecimalPlaces = 0 : 3;
         }
         field(19; "Sheet Weight (GM)"; Decimal)
         {
             DataClassification = ToBeClassified;
-            DecimalPlaces = 0 : 4;
+            DecimalPlaces = 0 : 3;
         }
         field(20; "Rate of Papar"; Decimal)
         {
             DataClassification = ToBeClassified;
-            DecimalPlaces = 0 : 4;
+            DecimalPlaces = 0 : 3;
         }
         field(21; Price; Decimal)
         {
@@ -181,7 +193,7 @@ table 50108 "CZ Lines"
 
     keys
     {
-        key(Key1; "Product No.", Type, "Type Line No.", "Vendor Code", "Main Item Code", "Start Date", "End date", "Line No.")
+        key(Key1; "Product No.", Type, "Type Line No.", "Vendor Code", "Main Item Code", "Line No.")
         {
             Clustered = true;
         }
@@ -209,5 +221,6 @@ table 50108 "CZ Lines"
     begin
 
     end;
+
 
 }

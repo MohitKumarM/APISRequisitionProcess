@@ -21,6 +21,26 @@ page 50134 "Pouch Paper Master"
                 {
 
                 }
+                field("Vendor Code"; Rec."Vendor Code")
+                {
+
+                }
+                field("Vendor Name"; Rec."Vendor Name")
+                {
+
+                }
+                field("Start Date"; Rec."Start Date")
+                {
+
+                }
+                field("End Date"; Rec."End Date")
+                {
+
+                }
+                field("Rate(Rs/Kg)"; Rec."Rate of Paper")
+                {
+                    Caption = 'Rate(Rs/Kg)';
+                }
             }
         }
     }

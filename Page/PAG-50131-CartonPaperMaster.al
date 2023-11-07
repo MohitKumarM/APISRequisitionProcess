@@ -21,7 +21,29 @@ page 50131 "Carton Paper Master"
                 {
 
                 }
+                field("Vendor Code"; Rec."Vendor Code")
+                {
+
+                }
+                field("Vendor Name"; Rec."Vendor Name")
+                {
+
+                }
+                field("Start Date"; Rec."Start Date")
+                {
+
+                }
+                field("End Date"; Rec."End Date")
+                {
+
+                }
+                field("Rate of Paper"; Rec."Rate of Paper")
+                {
+
+                }
             }
         }
     }
+
+
 }

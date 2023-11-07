@@ -384,9 +384,7 @@ page 50136 "PAG-50136-QuoteComparison"
                                                         CZHeader_Loc.Reset();
                                                         CZHeader_Loc.SetRange(Type, CZHeader_Loc.Type::Carton);
                                                         CZHeader_Loc.SetRange("Main Item Code", IndentLines_Loc."No.");
-                                                        CZHeader_Loc.SetFilter("Start Date", '<=%1', Today());
-                                                        CZHeader_Loc.SetFilter("End Date", '>=%1', Today());
-                                                        IF CZHeader_Loc.FindSet() then begin
+                                                        IF CZHeader_Loc.FindFirst() then begin
                                                             repeat
                                                                 QuoteComparision_Loc.Init();
                                                                 EntryNo_Loc += 1;
@@ -413,9 +411,7 @@ page 50136 "PAG-50136-QuoteComparison"
                                                         CZHeader_Loc.Reset();
                                                         CZHeader_Loc.SetRange(Type, CZHeader_Loc.Type::Pouch);
                                                         CZHeader_Loc.SetRange("Main Item Code", IndentLines_Loc."No.");
-                                                        CZHeader_Loc.SetFilter("Start Date", '<=%1', Today());
-                                                        CZHeader_Loc.SetFilter("End Date", '>=%1', Today());
-                                                        IF CZHeader_Loc.FindSet() then begin
+                                                        IF CZHeader_Loc.FindFirst() then begin
                                                             repeat
                                                                 QuoteComparision_Loc.Init();
                                                                 EntryNo_Loc += 1;

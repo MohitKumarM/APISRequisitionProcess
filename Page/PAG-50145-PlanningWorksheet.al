@@ -45,14 +45,11 @@ page 50145 "PM Planning Worksheet"
                     ToolTip = 'Specifies the value of the Inventory Posting Group field.';
                     Editable = false;
                 }
-                field("Direct Sales Quantity"; Rec."SO Qty")
-                {
-                    Editable = false;
-                }
 
-                field("Demand"; Rec."Actaul Demand")
+                field("Direct Item Demand"; Rec."Actaul Demand")
                 {
-                    Caption = 'Demand';
+
+                    Caption = 'Direct Item Demand';
                     Editable = false;
                 }
                 field("Demand Quantity FG"; Rec."Demand Quantity FG")

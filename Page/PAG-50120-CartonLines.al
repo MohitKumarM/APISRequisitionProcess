@@ -20,10 +20,17 @@ page 50120 "Carton Lines"
             {
                 field("Item Code"; Rec."Quality Paper Code")
                 {
-
+                    trigger OnValidate()
+                    begin
+                        CalculateCartonLineCosting();
+                    end;
                 }
                 field("Item Name"; Rec."Quality Paper Description")
                 {
+                    trigger OnValidate()
+                    begin
+                        CalculateCartonLineCosting();
+                    end;
 
                 }
                 field(Length; Rec.Length)
@@ -124,24 +131,27 @@ page 50120 "Carton Lines"
     var
         CZHeader_Loc: Record "CZ Header";
     begin
-        Rec."Area (Sq Mtr)" := ((Rec.Length * Rec.Width) / 1000000);
-        Rec."Box GSM" := ((Rec.GSM * Rec."Area (Sq Mtr)") / 1000);
-        Rec."Wastage 4%" := (Rec."Box GSM" * 0.04);
-        Rec."Sheet Weight (GM)" := (Rec."Box GSM" + Rec."Wastage 4%");
-        Rec.Price := (Rec."Sheet Weight (GM)" * Rec."Rate of Papar");
+        IF Rec.Type = Rec.Type::Carton then begin
+            Rec."Area (Sq Mtr)" := ((Rec.Length * Rec.Width) / 1000000);
+            Rec."Box GSM" := ((Rec.GSM * Rec."Area (Sq Mtr)") / 1000);
+            Rec."Wastage 4%" := (Rec."Box GSM" * 0.04);
+            Rec."Sheet Weight (GM)" := (Rec."Box GSM" + Rec."Wastage 4%");
+            Rec.Price := (Rec."Sheet Weight (GM)" * Rec."Rate of Papar");
 
-        CZHeader_Loc.Reset();
-        CZHeader_Loc.SetRange("Product No.", Rec."Product No.");
-        CZHeader_Loc.SetRange(Type, Rec.Type);
-        CZHeader_Loc.SetRange("Type Line No.", Rec."Type Line No.");
-        IF CZHeader_Loc.FindFirst() then begin
-            CZHeader_Loc.CalcFields(TotalLinePrice, TotalLineSheetWeightGM);
-            TotalLinePrice := CZHeader_Loc.TotalLinePrice;
+            CZHeader_Loc.Reset();
+            CZHeader_Loc.SetRange("Product No.", Rec."Product No.");
+            CZHeader_Loc.SetRange(Type, Rec.Type);
+            CZHeader_Loc.SetRange("Type Line No.", Rec."Type Line No.");
+            IF CZHeader_Loc.FindFirst() then begin
+                CZHeader_Loc.CalcFields(TotalLinePrice, TotalLineSheetWeightGM);
+                TotalLinePrice := CZHeader_Loc.TotalLinePrice;
 
-            CZHeader_Loc."Conversion Price" := (CZHeader_Loc.Conversion * CZHeader_Loc.TotalLineSheetWeightGM);
-            CZHeader_Loc."Rate Per Box/PCs" := (CZHeader_Loc."Conversion Price" + CZHeader_Loc.Printing + CZHeader_Loc.TotalLinePrice);
-            IF CZHeader_Loc.Modify() then;
+                CZHeader_Loc."Conversion Price" := (CZHeader_Loc.Conversion * CZHeader_Loc.TotalLineSheetWeightGM);
+                CZHeader_Loc."Rate Per Box/PCs" := (CZHeader_Loc."Conversion Price" + CZHeader_Loc.Printing + CZHeader_Loc.TotalLinePrice);
+                IF CZHeader_Loc.Modify() then;
+            end;
         end;
         if Rec.Modify() then;
     end;
+
 }

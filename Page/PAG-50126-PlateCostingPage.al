@@ -49,24 +49,12 @@ page 50126 "Plate Costing"
                     ToolTip = 'Specifies the value of the Main Item Name field.';
                     Editable = false;
                 }
-                field("Start Date"; Rec."Start Date")
-                {
-                    ToolTip = 'Specifies the value of the Start Date field.';
-                    ShowMandatory = true;
-                    Editable = false;
-                }
-                field("End date"; Rec."End date")
-                {
-                    ToolTip = 'Specifies the value of the End date field.';
-                    ShowMandatory = true;
-                    Editable = false;
-                }
                 field("Length Inch"; Rec."Length Inch")
                 {
                     ToolTip = 'Specifies the value of the Length Inch field.';
                     trigger OnValidate()
                     begin
-                        CalculatePlateCosting();
+                        Rec.CalculatePlateCosting();
                     end;
                 }
                 field("Length MM"; Rec."Length MM")
@@ -74,7 +62,7 @@ page 50126 "Plate Costing"
                     ToolTip = 'Specifies the value of the Length MM field.';
                     trigger OnValidate()
                     begin
-                        CalculatePlateCosting();
+                        Rec.CalculatePlateCosting();
                     end;
                 }
                 field("Width Inch"; Rec."Width Inch")
@@ -82,7 +70,7 @@ page 50126 "Plate Costing"
                     ToolTip = 'Specifies the value of the Width Inch field.';
                     trigger OnValidate()
                     begin
-                        CalculatePlateCosting();
+                        Rec.CalculatePlateCosting();
                     end;
                 }
                 field("Width MM"; Rec."Width MM")
@@ -90,7 +78,7 @@ page 50126 "Plate Costing"
                     ToolTip = 'Specifies the value of the Width MM field.';
                     trigger OnValidate()
                     begin
-                        CalculatePlateCosting();
+                        Rec.CalculatePlateCosting();
                     end;
                 }
                 field("Height Inch"; Rec."Height Inch")
@@ -98,7 +86,7 @@ page 50126 "Plate Costing"
                     ToolTip = 'Specifies the value of the Height Inch field.';
                     trigger OnValidate()
                     begin
-                        CalculatePlateCosting();
+                        Rec.CalculatePlateCosting();
                     end;
                 }
                 field("Height MM"; Rec."Height MM")
@@ -106,7 +94,7 @@ page 50126 "Plate Costing"
                     ToolTip = 'Specifies the value of the Height MM field.';
                     trigger OnValidate()
                     begin
-                        CalculatePlateCosting();
+                        Rec.CalculatePlateCosting();
                     end;
                 }
                 field("Total Length"; Rec."Total Length")
@@ -124,7 +112,7 @@ page 50126 "Plate Costing"
                     ToolTip = 'Specifies the value of the Conversion field.';
                     trigger OnValidate()
                     begin
-                        CalculatePlateCosting();
+                        Rec.CalculatePlateCosting();
                     end;
                 }
                 field("Conversion Price"; Rec."Conversion Price")
@@ -136,7 +124,7 @@ page 50126 "Plate Costing"
                     ToolTip = 'Specifies the value of the Printing field.';
                     trigger OnValidate()
                     begin
-                        CalculatePlateCosting();
+                        Rec.CalculatePlateCosting();
                     end;
                 }
                 field("Rate Per Box/PCs"; Rec."Rate Per Box/PCs")
@@ -148,7 +136,7 @@ page 50126 "Plate Costing"
                 {
                     trigger OnValidate()
                     begin
-                        CalculatePlateCosting();
+                        Rec.CalculatePlateCosting();
                     end;
                 }
                 field("Total Cost"; Rec."Total Cost")
@@ -168,19 +156,19 @@ page 50126 "Plate Costing"
 
     trigger OnOpenPage()
     begin
-        CalculatePlateCosting();
+        Rec.CalculatePlateCosting();
     end;
 
     trigger OnAfterGetRecord()
     begin
-        CalculatePlateCosting();
+        Rec.CalculatePlateCosting();
     end;
 
     trigger OnAfterGetCurrRecord()
     begin
         IF (Rec."Type Line No." > 0) then
             CurrPage.PlateLines.Page.SetTypeLineNo(Rec."Type Line No.");
-        CalculatePlateCosting();
+        Rec.CalculatePlateCosting();
     end;
 
     trigger OnInsertRecord(BelowxRec: Boolean): Boolean
@@ -196,15 +184,11 @@ page 50126 "Plate Costing"
                 Rec."Vendor Code" := CZHeader_Loc."Vendor Code";
                 Rec."Main Item Code" := CZHeader_Loc."Main Item Code";
                 Rec."Main Item Name" := CZHeader_Loc."Main Item Name";
-                Rec."Start Date" := CZHeader_Loc."Start Date";
-                Rec."End date" := CZHeader_Loc."End date";
                 CZHeader_Loc2.Reset();
                 CZHeader_Loc2.SetRange(Type, Rec.Type);
                 CZHeader_Loc2.SetRange("Product No.", Rec."Product No.");
                 CZHeader_Loc2.SetRange("Vendor Code", Rec."Vendor Code");
                 CZHeader_Loc2.SetRange("Main Item Code", Rec."Main Item Code");
-                CZHeader_Loc2.SetRange("Start Date", Rec."Start Date");
-                CZHeader_Loc2.SetRange("End date", Rec."End date");
                 IF CZHeader_Loc2.FindLast() then
                     Rec."Type Line No." := CZHeader_Loc2."Type Line No." + 10000
                 else
@@ -215,17 +199,5 @@ page 50126 "Plate Costing"
         end;
     end;
 
-    procedure CalculatePlateCosting()
-    begin
-        Rec."Total Length" := Rec."Length MM";
-        Rec."Total Width" := Rec."Width MM";
 
-        Rec.CalcFields(TotalLinePrice, TotalLineSheetWeightGM);
-        Rec."Conversion Price" := (Rec.Conversion * Rec.TotalLineSheetWeightGM);
-        Rec."Rate Per Box/PCs" := (Rec."Conversion Price" + Rec.Printing + Rec.TotalLinePrice);
-        Rec."Total Cost" := Rec."Rate Per Box/PCs" * Rec."No. of Pcs";
-        IF Rec.Modify() then;
-        CurrPage.Update(true);
-
-    end;
 }

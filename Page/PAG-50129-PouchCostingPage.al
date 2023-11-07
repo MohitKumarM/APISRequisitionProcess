@@ -45,22 +45,11 @@ page 50129 "Pouch Costing"
                     Editable = false;
 
                 }
-                field("Start Date"; Rec."Start Date")
-                {
-                    ToolTip = 'Specifies the value of the Start Date field.';
-                    ShowMandatory = true;
-
-                }
-                field("End date"; Rec."End date")
-                {
-                    ToolTip = 'Specifies the value of the End date field.';
-                    ShowMandatory = true;
-                }
                 field("Width MM"; Rec."Width MM")
                 {
                     trigger OnValidate()
                     begin
-                        CalculatePouchCosting();
+                        Rec.CalculatePouchCosting();
                     end;
 
                 }
@@ -68,7 +57,7 @@ page 50129 "Pouch Costing"
                 {
                     trigger OnValidate()
                     begin
-                        CalculatePouchCosting();
+                        Rec.CalculatePouchCosting();
                     end;
 
                 }
@@ -117,7 +106,7 @@ page 50129 "Pouch Costing"
             part(PouchLines; "Pouch Lines")
             {
                 ApplicationArea = Basic, Suite;
-                SubPageLink = "Product No." = field("Product No."), Type = field(Type), "Type Line No." = field("Type Line No."), "Vendor Code" = field("Vendor Code"), "Main Item Code" = field("Main Item Code"), "Start Date" = field("Start Date"), "End date" = field("End date");
+                SubPageLink = "Product No." = field("Product No."), Type = field(Type), "Type Line No." = field("Type Line No."), "Vendor Code" = field("Vendor Code"), "Main Item Code" = field("Main Item Code");
                 UpdatePropagation = Both;
             }
             group("Per Pouch/KG")
@@ -136,21 +125,21 @@ page 50129 "Pouch Costing"
                     Caption = 'Wastage %';
                     trigger OnValidate()
                     begin
-                        CalculatePouchCosting();
+                        Rec.CalculatePouchCosting();
                     end;
                 }
-                field(Pouch; Rec.Pouch)
+                field(Zipper; Rec.Pouch)
                 {
                     trigger OnValidate()
                     begin
-                        CalculatePouchCosting();
+                        Rec.CalculatePouchCosting();
                     end;
                 }
                 field(Conversion; Rec.Conversion)
                 {
                     trigger OnValidate()
                     begin
-                        CalculatePouchCosting();
+                        Rec.CalculatePouchCosting();
                     end;
                 }
                 field("Basic Cost Per Pouch"; Rec."Basic Cost Per Pouch")
@@ -211,7 +200,7 @@ page 50129 "Pouch Costing"
                     {
                         trigger OnValidate()
                         begin
-                            CalculatePouchCosting();
+                            Rec.CalculatePouchCosting();
                         end;
                     }
                     field("Pouch / KG"; Rec."Pouch / KG")
@@ -240,52 +229,18 @@ page 50129 "Pouch Costing"
 
     trigger OnOpenPage()
     begin
-        CalculatePouchCosting();
+        Rec.CalculatePouchCosting();
     end;
 
     trigger OnAfterGetRecord()
     begin
-        CalculatePouchCosting();
+        Rec.CalculatePouchCosting();
     end;
 
     trigger OnAfterGetCurrRecord()
     begin
-        CalculatePouchCosting();
+        Rec.CalculatePouchCosting();
     end;
 
-    procedure CalculatePouchCosting()
-    begin
-        Rec."Material in Sq. mm" := (Rec."Width MM" * Rec."Length MM");
-        Rec."Material in Sq. cm" := (Rec."Material in Sq. mm" / 100);
-        IF (Rec."Material in Sq. mm" <> 0) then
-            Rec."Pouches in Sq. M" := (10000 / Rec."Material in Sq. cm");
-
-        Rec.CalcFields(PouchTotalGSM, PouchTotalConspt, PouchTotalCostPerPouch, PouchLineTotalRs);
-
-        Rec."Per Pouch Wt. (Gm)" := Rec.PouchTotalConspt;
-        IF (Rec."Per Pouch Wt. (Gm)" <> 0) then
-            Rec."No. of pouch per kg" := (1000 / Rec."Per Pouch Wt. (Gm)");
-
-        Rec."Basic Material rate / Pouch" := Rec.PouchTotalCostPerPouch;
-        IF (Rec.PouchTotalGSM <> 0) then
-            Rec."Basic Material rate / KG" := (Rec.PouchLineTotalRs / Rec.PouchTotalGSM);
-        Rec."Wastage / Pouch" := (Rec."Basic Material rate / Pouch" * (Rec.Wastage / 100));
-        Rec."Wastage / KG" := (Rec."Basic Material rate / KG" * (Rec.Wastage / 100));
-        IF (Rec."No. of pouch per kg" <> 0) then
-            Rec."Pouching / Pouch" := (Rec."Pouching / KG" / Rec."No. of pouch per kg");
-        Rec."Zipper / Pouch" := ((Rec."Length MM" / 25.4) * Rec.Pouch);
-        Rec."Pouch / KG" := (Rec."Zipper / Pouch" * Rec."No. of pouch per kg");
-        IF (Rec."No. of pouch per kg" <> 0) then
-            Rec."Conversion / Pouch" := (Rec.Conversion / Rec."No. of pouch per kg");
-        Rec."Conversion / KG" := Rec.Conversion;
-        Rec."Landed Price / Pouch" := (Rec."Basic Material rate / Pouch" + Rec."Wastage / Pouch" + Rec."Pouching / Pouch" +
-        Rec."Zipper / Pouch" + Rec."Conversion / Pouch");
-        Rec."Landed Price / KG" := (Rec."Basic Material rate / KG" + Rec."Wastage / KG" + Rec."Pouching / KG" +
-        Rec."Pouch / KG" + Rec."Conversion / KG");
-        Rec."Basic Cost Per Pouch" := Rec."Landed Price / Pouch";
-        Rec."Landed Price (Rs./Kg)" := Rec."Landed Price / KG";
-        If Rec.Modify() then;
-
-    end;
 
 }

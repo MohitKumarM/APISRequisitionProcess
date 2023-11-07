@@ -72,7 +72,7 @@ pageextension 50107 Item extends "Item Card"
     trigger OnQueryClosePage(CloseAction: Action): Boolean
     begin
         IF (CloseAction = CloseAction::OK) or (CloseAction = CloseAction::LookupOK) then begin
-            Rec.TestField("Planning type");
+
             IF (Rec."Planning type" = Rec."Planning type"::PM) then begin
                 Rec.TestField("PM Item Type");
                 Rec.TestField(Length);

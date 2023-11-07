@@ -28,14 +28,7 @@ page 50122 "Partition Costing List"
                 {
                     ToolTip = 'Specifies the value of the Vendor Name field.';
                 }
-                field("Start Date"; Rec."Start Date")
-                {
-                    ToolTip = 'Specifies the value of the Start Date field.';
-                }
-                field("End date"; Rec."End date")
-                {
-                    ToolTip = 'Specifies the value of the End date field.';
-                }
+
                 field("No. of Pcs"; Rec."No. of Pcs")
                 {
 

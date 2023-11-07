@@ -223,7 +223,7 @@ table 50110 "PM Planning Item Wise"
         if Location_loc.FindSet() then begin
             repeat
                 Item_Loc.Reset();
-                //Item_Loc.SetRange("No.", '1160');
+                Item_Loc.SetFilter("No.", '1000|1001|1100|70061|70062');
                 IF Item_Loc.FindSet() then begin
                     repeat
                         CalculateDemandNewLogic03112023(Item_Loc, Location_loc);
@@ -252,7 +252,7 @@ table 50110 "PM Planning Item Wise"
                 else
                     PlanningWorksheet_Loc_1."Total Demand" := 0;
 
-                PlanningWorksheet_Loc_1."Qty. for Indent" := "Total Demand";
+                PlanningWorksheet_Loc_1."Qty. for Indent" := PlanningWorksheet_Loc_1."Total Demand";
                 PlanningWorksheet_Loc_1.Modify();
             until PlanningWorksheet_Loc_1.Next() = 0;
             Message('Planning Worksheet has been successfully updated');
