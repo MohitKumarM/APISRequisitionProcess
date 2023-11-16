@@ -30,6 +30,11 @@ codeunit 50005 "E-Invoice Generation"
         GSTIN: Code[20];
     begin
         EInvoiceSetup.Get();
+        EInvoiceSetup.TestField("Client ID");
+        EInvoiceSetup.TestField("Client Secret");
+        EInvoiceSetup.TestField("IP Address");
+        EInvoiceSetup.TestField("Authentication URL");
+        EInvoiceSetup.TestField("E-Invoice URl");
         G_Client_ID := EInvoiceSetup."Client ID";
         G_Client_Secret := EInvoiceSetup."Client Secret";
         G_IP_Address := EInvoiceSetup."IP Address";

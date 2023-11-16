@@ -143,7 +143,7 @@ pageextension 50154 EInvPostedSalesCrMemo extends "Posted Sales Credit Memo"
                     var
                         EWaybillGeneration: Codeunit "E-Way Bill Generartion";
                     begin
-                        if Confirm('Do you want to Generate E-Way Bill No.?', false) then begin
+                        if Confirm('Do you want to Canel E-Way Bill No.?', false) then begin
                             Rec.TestField("E-Way Bill Cancel DateTime", 0DT);
                             Rec.TestField("E-Way Bill No.");
                             Clear(EWaybillGeneration);

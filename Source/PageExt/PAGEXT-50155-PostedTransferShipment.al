@@ -155,7 +155,7 @@ pageextension 50155 EInvPostedTransferShipment extends "Posted Transfer Shipment
                     var
                         EWaybillGeneration: Codeunit "E-Way Bill Generartion";
                     begin
-                        if Confirm('Do you want to Generate E-Way Bill No.?', false) then begin
+                        if Confirm('Do you want to Cancel E-Way Bill No.?', false) then begin
                             Rec.TestField("E-Way Bill Cancel DateTime", 0DT);
                             Rec.TestField("E-Way Bill No.");
                             Clear(EWaybillGeneration);
