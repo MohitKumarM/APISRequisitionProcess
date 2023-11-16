@@ -1,4 +1,4 @@
-codeunit 50151 "E-Way Bill Generartion"
+codeunit 50006 "E-Way Bill Generartion"
 {
     trigger OnRun()
     begin

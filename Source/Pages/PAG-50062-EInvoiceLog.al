@@ -1,4 +1,4 @@
-page 50312 "E-Invoice Log"
+page 50062 "E-Invoice Log"
 {
     PageType = List;
     ApplicationArea = All;

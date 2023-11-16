@@ -1,4 +1,4 @@
-table 50102 E_Invoice_Log
+table 50017 E_Invoice_Log
 {
     DataClassification = ToBeClassified;
     LookupPageId = "E-Invoice Log";

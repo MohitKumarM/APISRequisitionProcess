@@ -1,4 +1,4 @@
-table 50100 "E-Invoice Set Up"
+table 50016 "E-Invoice Set Up"
 {
     DataClassification = ToBeClassified;
     LookupPageId = "E-Invoice Setup";

@@ -1,4 +1,4 @@
-codeunit 50150 "E-Invoice Generation"
+codeunit 50005 "E-Invoice Generation"
 { // Need To Assgin Round Gl Value
   // OthCharges And Discount Value Pass either header Part Or Either Item List Part(Both Header and Item List Part Pass Value Not applicale)
     trigger OnRun()

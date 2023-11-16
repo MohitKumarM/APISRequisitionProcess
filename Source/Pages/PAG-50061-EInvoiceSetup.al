@@ -1,4 +1,4 @@
-page 50150 "E-Invoice Setup"
+page 50061 "E-Invoice Setup"
 {
     PageType = Card;
     ApplicationArea = All;
