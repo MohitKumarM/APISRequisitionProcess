@@ -39,6 +39,18 @@ pageextension 50107 Item extends "Item Card"
                 ApplicationArea = all;
                 Editable = PMItemenabled;
             }
+            field(Brand; Rec.Brand)
+            {
+                ApplicationArea = all;
+            }
+            field(weight; Rec.weight)
+            {
+                ApplicationArea = all;
+            }
+            field(Packing; Rec.Packing)
+            {
+                ApplicationArea = all;
+            }
         }
     }
 

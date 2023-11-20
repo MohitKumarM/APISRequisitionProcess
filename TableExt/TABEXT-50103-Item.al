@@ -22,6 +22,18 @@ tableextension 50103 Item extends Item
         {
             OptionMembers = "FG-Honey","FG-Non Honey",PM,"RM-Honey","RM-NonHoney";
         }
+        field(50021; Brand; Text[100])
+        {
+            DataClassification = ToBeClassified;
+        }
+        field(50022; weight; Decimal)
+        {
+            DataClassification = ToBeClassified;
+        }
+        field(50023; Packing; Integer)
+        {
+            DataClassification = ToBeClassified;
+        }
     }
 
     var
